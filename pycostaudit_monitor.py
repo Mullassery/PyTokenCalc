@@ -60,6 +60,34 @@ class CostMonitor:
             "by_model": dict(sorted(by_model.items(), key=lambda x: x[1], reverse=True)),
         }
 
+    def get_weekly_forecast(self) -> dict:
+        """Calculate weekly forecast"""
+        today = datetime.now().date()
+        week_ago = today - timedelta(days=7)
+
+        week_costs = [
+            c for c in self.data.get("costs", [])
+            if datetime.fromisoformat(c.get("timestamp", "")).date() >= week_ago
+        ]
+
+        daily_totals = {}
+        for c in week_costs:
+            date = datetime.fromisoformat(c.get("timestamp", "")).date()
+            daily_totals[str(date)] = daily_totals.get(str(date), 0) + c.get("estimated_cost", 0)
+
+        if daily_totals:
+            avg_daily = sum(daily_totals.values()) / len(daily_totals)
+            weekly_forecast = avg_daily * 7
+            monthly_forecast = avg_daily * 30
+        else:
+            avg_daily = weekly_forecast = monthly_forecast = 0
+
+        return {
+            "daily_average": avg_daily,
+            "weekly_forecast": weekly_forecast,
+            "monthly_forecast": monthly_forecast,
+        }
+
     def get_sparkline(self, values: list, width: int = 10) -> str:
         """Generate ASCII sparkline"""
         if not values:
