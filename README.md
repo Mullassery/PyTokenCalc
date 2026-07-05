@@ -406,6 +406,8 @@ export PYCOSTAUDIT_DB=~/.pycostaudit/costs.db
   - Enterprise contracts (custom pricing)
   - Pricing changes (pricing updates daily)
   - Hidden overhead in MCP calls (can be 10-100x)
+  - **Local taxes** (VAT, GST, sales tax added at checkout by region)
+  - Currency fluctuations (if billing in non-USD currency)
 - **Always verify against your actual Claude invoice**
 - Use "pricing_source" field: "api" (most accurate) vs "fallback" (⚠️ outdated)
 
