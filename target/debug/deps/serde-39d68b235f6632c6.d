@@ -1,0 +1,14 @@
+/Users/georgimullassery/CostReporter/target/debug/deps/serde-39d68b235f6632c6.d: /Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /Users/georgimullassery/CostReporter/target/debug/build/serde-fd8d8320745a88da/out/private.rs
+
+/Users/georgimullassery/CostReporter/target/debug/deps/libserde-39d68b235f6632c6.rlib: /Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /Users/georgimullassery/CostReporter/target/debug/build/serde-fd8d8320745a88da/out/private.rs
+
+/Users/georgimullassery/CostReporter/target/debug/deps/libserde-39d68b235f6632c6.rmeta: /Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs /Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs /Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs /Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs /Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs /Users/georgimullassery/CostReporter/target/debug/build/serde-fd8d8320745a88da/out/private.rs
+
+/Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/lib.rs:
+/Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/integer128.rs:
+/Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/mod.rs:
+/Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/de.rs:
+/Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/serde-1.0.228/src/private/ser.rs:
+/Users/georgimullassery/CostReporter/target/debug/build/serde-fd8d8320745a88da/out/private.rs:
+
+# env-dep:OUT_DIR=/Users/georgimullassery/CostReporter/target/debug/build/serde-fd8d8320745a88da/out

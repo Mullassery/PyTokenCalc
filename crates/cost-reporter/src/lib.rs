@@ -1,55 +1,108 @@
-//! ClaudeBeacon Core — High-performance memory, observability, and audit system
+//! CostReporter Core — Real-time LLM cost tracking and analysis
 //!
 //! Rust core for handling:
-//! - Persistent project memory (SQLite/PostgreSQL)
-//! - Tool call observability tracking
-//! - Audit logging for compliance
-//! - Session management
+//! - Silent operation tracking (API calls, file reads, MCP invocations)
+//! - Session-based cost grouping (root cause analysis)
+//! - File format cost multipliers (36x variance: CSV vs PDF URL)
+//! - Operation type isolation (55x variance: browser vs file)
+//! - MCP profiling (rank skills by cost)
+//! - SQLite persistence (local, private)
 
-pub mod memory;
-pub mod observability;
-pub mod audit;
+pub mod types;
+pub mod cost_tracker;
+pub mod session;
+pub mod file_format_profiler;
+pub mod operation_profiler;
+pub mod mcp_profiler;
 pub mod storage;
-pub mod mcp;
+pub mod analyzer;
 
-pub use memory::MemoryManager;
-pub use observability::ObservabilityTracker;
-pub use audit::AuditLogger;
+pub use types::{Operation, OperationType, FileSource, Session, CostData};
+pub use cost_tracker::CostTracker;
+pub use session::SessionManager;
 pub use storage::StorageBackend;
+pub use analyzer::CostAnalyzer;
 
-#[derive(Debug)]
-pub struct BeaconCore {
-    memory: MemoryManager,
-    observability: ObservabilityTracker,
-    audit: AuditLogger,
+#[derive(Debug, Clone)]
+pub struct CostReporter {
+    tracker: std::sync::Arc<tokio::sync::Mutex<CostTracker>>,
     storage: StorageBackend,
 }
 
-impl BeaconCore {
+impl CostReporter {
     pub async fn new(db_path: &str) -> anyhow::Result<Self> {
         let storage = StorageBackend::new(db_path).await?;
-        
+        let tracker = CostTracker::new(storage.clone());
+
         Ok(Self {
-            memory: MemoryManager::new(storage.clone()),
-            observability: ObservabilityTracker::new(),
-            audit: AuditLogger::new(storage.clone()),
+            tracker: std::sync::Arc::new(tokio::sync::Mutex::new(tracker)),
             storage,
         })
     }
 
-    /// Save project context to memory
-    pub async fn save_memory(&mut self, context: serde_json::Value) -> anyhow::Result<()> {
-        self.memory.save(context).await?;
+    /// Track a single operation (called silently in background)
+    pub async fn track_operation(&self, operation: Operation) -> anyhow::Result<CostData> {
+        let mut tracker = self.tracker.lock().await;
+        let cost_data = tracker.calculate_cost(&operation)?;
+        self.storage.save_operation(&operation, &cost_data).await?;
+        Ok(cost_data)
+    }
+
+    /// Start a new session (manual or auto-detected)
+    pub async fn start_session(&self, session_name: Option<String>) -> anyhow::Result<String> {
+        let mut tracker = self.tracker.lock().await;
+        let session = tracker.create_session(session_name)?;
+        self.storage.save_session(&session).await?;
+        Ok(session.id.clone())
+    }
+
+    /// End current session and aggregate costs
+    pub async fn end_session(&self, session_id: &str) -> anyhow::Result<serde_json::Value> {
+        let mut tracker = self.tracker.lock().await;
+        let session_summary = tracker.finalize_session(session_id)?;
+        self.storage.update_session_summary(session_id, &session_summary).await?;
+        Ok(session_summary)
+    }
+
+    /// Tag current session
+    pub async fn tag_session(&self, session_id: &str, key: String, value: String) -> anyhow::Result<()> {
+        let mut tracker = self.tracker.lock().await;
+        tracker.tag_session(session_id, key, value)?;
         Ok(())
     }
 
-    /// Get observability data for current session
-    pub async fn observe(&self) -> anyhow::Result<serde_json::Value> {
-        self.observability.get_summary().await
+    /// Get today's cost breakdown (by operation type, file format, MCP)
+    pub async fn analyze_daily(&self) -> anyhow::Result<serde_json::Value> {
+        let operations = self.storage.get_operations_since_hours(24).await?;
+        let analyzer = CostAnalyzer::new();
+        Ok(analyzer.daily_breakdown(&operations)?)
     }
 
-    /// Get audit logs (optionally filtered)
-    pub async fn audit(&self, filter: Option<serde_json::Value>) -> anyhow::Result<Vec<serde_json::Value>> {
-        self.audit.get_logs(filter).await
+    /// Get session cost breakdown with diagnosis
+    pub async fn analyze_session(&self, session_id: &str) -> anyhow::Result<serde_json::Value> {
+        let operations = self.storage.get_session_operations(session_id).await?;
+        let analyzer = CostAnalyzer::new();
+        Ok(analyzer.session_diagnosis(&operations, session_id)?)
+    }
+
+    /// Get MCP cost ranking
+    pub async fn analyze_mcp_costs(&self) -> anyhow::Result<serde_json::Value> {
+        let operations = self.storage.get_operations_since_hours(24).await?;
+        let analyzer = CostAnalyzer::new();
+        Ok(analyzer.mcp_ranking(&operations)?)
+    }
+
+    /// Get optimization recommendations
+    pub async fn get_recommendations(&self) -> anyhow::Result<serde_json::Value> {
+        let operations = self.storage.get_operations_since_hours(24).await?;
+        let analyzer = CostAnalyzer::new();
+        Ok(analyzer.generate_recommendations(&operations)?)
+    }
+
+    /// Detect cost anomalies
+    pub async fn detect_anomalies(&self) -> anyhow::Result<serde_json::Value> {
+        let operations = self.storage.get_operations_since_hours(168).await?; // 1 week
+        let analyzer = CostAnalyzer::new();
+        Ok(analyzer.detect_anomalies(&operations)?)
     }
 }
