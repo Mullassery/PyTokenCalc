@@ -4,7 +4,7 @@ build-backend = "maturin.build"
 
 [project]
 name = "pycostreporter"
-version = "0.3.0"
+version = "0.4.0"
 description = "Real-time LLM cost tracking and optimization — Rust core with Python API"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -39,7 +39,7 @@ Repository = "https://github.com/Mullassery/PyCostReporter"
 "Bug Tracker" = "https://github.com/Mullassery/PyCostReporter/issues"
 
 [tool.maturin]
-module-name = "pycost_reporter._core"
+module-name = "pycostreporter._core"
 manifest-path = "python/Cargo.toml"
 python-source = "python/src"
 

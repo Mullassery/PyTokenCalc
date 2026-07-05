@@ -1,6 +1,6 @@
 # PyCostReporter
 
-[![PyPI version](https://badge.fury.io/py/pycost-reporter.svg)](https://pypi.org/project/pycost-reporter/)
+[![PyPI version](https://badge.fury.io/py/pycostreporter.svg)](https://pypi.org/project/pycostreporter/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![GitHub](https://img.shields.io/badge/GitHub-PyCostReporter-black.svg)](https://github.com/Mullassery/PyCostReporter)
@@ -76,13 +76,13 @@ Result: $1,200 → $375/month. You just kept $10k/year.
 
 ```bash
 # Install
-pip install pycost-reporter
+pip install pycostreporter
 
 # Start tracking
-from pycost_reporter import PyCostReporter
+from pycostreporter import PyCostReporter
 import os
 
-reporter = PyCostReporter(db_path="~/.pycost_reporter/costs.db")
+reporter = PyCostReporter(db_path="~/.pycostreporter/costs.db")
 
 # Example: Track a file read operation
 cost = reporter.track_operation(
@@ -309,6 +309,6 @@ The market is worth $1B+. Everyone using Claude (50M+ users) is leaving 50-80% i
 
 - Bug Reports: [GitHub Issues](https://github.com/Mullassery/PyCostReporter/issues)
 - Discussions: [GitHub Discussions](https://github.com/Mullassery/PyCostReporter/discussions)
-- Package: [PyPI: pycost-reporter](https://pypi.org/project/pycost-reporter/)
+- Package: [PyPI: pycostreporter](https://pypi.org/project/pycostreporter/)
 
 **Stop wasting money. Start tracking what matters.** 💚
