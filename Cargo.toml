@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/beacon-core"]
+members = ["crates/cost-reporter"]
 resolver = "2"
 
 [workspace.package]
@@ -7,7 +7,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Georgi Mammen Mullassery <mullassery@gmail.com>"]
 license = "MIT"
-repository = "https://github.com/Mullassery/ClaudeBeacon"
+repository = "https://github.com/Mullassery/CostReporter"
 
 [workspace.dependencies]
 pyo3 = { version = "0.22", features = ["extension-module"] }

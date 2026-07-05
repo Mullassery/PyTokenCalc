@@ -1,8 +1,8 @@
-# 💰 Cost Guardian
+# 💰 CostReporter
 
-**See where your Claude Code money goes. Cut costs by 50%+ without sacrificing quality.**
+**See where your LLM money goes. Cut costs by 50%+ without sacrificing quality.**
 
-Cost Guardian is a real-time cost optimizer for Claude Code that answers the question every user has:
+CostReporter is a real-time cost optimizer for Claude Code (and other LLMs) that answers the question every user has:
 
 > "Why does Claude cost so much, and what can I do about it?"
 
@@ -20,7 +20,7 @@ Claude Code users bleed money without seeing it:
 ❌ Repeated prompts cost 10x more than cached ones
 ```
 
-**Cost Guardian solves all of it.**
+**CostReporter solves all of it.**
 
 ---
 
@@ -29,7 +29,7 @@ Claude Code users bleed money without seeing it:
 ```
 Session starts
     ↓
-Cost Guardian tracks every operation
+CostReporter tracks every operation
     ↓
 Shows: "File reads = 60% of your tokens ($47 today)"
     ↓
@@ -101,11 +101,11 @@ Insight: Friday spending 8% higher. Pattern matches large refactoring tasks.
 
 ### Install
 ```bash
-pip install cost-guardian
+pip install cost-reporter
 
 # Or from source
-git clone https://github.com/Mullassery/ClaudeBeacon.git
-cd ClaudeBeacon
+git clone https://github.com/Mullassery/CostReporter.git
+cd CostReporter
 make install
 ```
 
@@ -138,9 +138,9 @@ status = guardian.get_budget_status()
 
 ---
 
-## Why Cost Guardian Wins
+## Why CostReporter Wins
 
-| Feature | Existing Tools | Cost Guardian |
+| Feature | Existing Tools | CostReporter |
 |---------|----------------|---------------|
 | Cost tracking | ✓ (fragmented) | ✓ **Unified** |
 | Spending limits | ✗ | ✓ **Hard stops** |
@@ -227,7 +227,7 @@ MIT — See [LICENSE](LICENSE)
 ## Community
 
 - 💬 Discuss on [r/ClaudeCode](https://reddit.com/r/ClaudeCode)
-- 🐛 Report issues on [GitHub](https://github.com/Mullassery/ClaudeBeacon/issues)
+- 🐛 Report issues on [GitHub](https://github.com/Mullassery/CostReporter/issues)
 - 💡 Share cost-saving tips with the community
 
 **Save money. Build faster. Together.** 💚

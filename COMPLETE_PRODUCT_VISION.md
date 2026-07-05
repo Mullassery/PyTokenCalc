@@ -1,4 +1,4 @@
-# Cost Guardian: Complete Product Vision
+# CostReporter: Complete Product Vision
 
 ## The Problem
 
@@ -14,7 +14,7 @@ Claude Code users have ZERO visibility into what costs money. They can't answer:
 
 ---
 
-## The Solution: Cost Guardian
+## The Solution: CostReporter
 
 **Five-dimensional cost tracking + real-time optimization + multi-channel unification.**
 
@@ -104,7 +104,7 @@ Claude Code users have ZERO visibility into what costs money. They can't answer:
 
 ### Loop 1: Cost Savings Stories (Reddit/Twitter)
 ```
-"Cost Guardian saved my team $420/month"
+"CostReporter saved my team $420/month"
 → 10k developers see post
 → 5% try it (500 devs)
 → 50% convert to free tier (250 free users)
@@ -113,17 +113,17 @@ Claude Code users have ZERO visibility into what costs money. They can't answer:
 
 ### Loop 2: MCP Marketplace Integration
 ```
-MCP creator: "Our MCP verified saves $X/month by Cost Guardian"
-→ Users check Cost Guardian dashboard
+MCP creator: "Our MCP verified saves $X/month by CostReporter"
+→ Users check CostReporter dashboard
 → See verified savings
-→ Adopt both MCP + Cost Guardian
+→ Adopt both MCP + CostReporter
 ```
 
 ### Loop 3: Enterprise Procurement
 ```
 Finance team: "How much do we spend on Claude?"
 Engineering: "No idea, spread across Bedrock, Azure, API"
-Finance discovers Cost Guardian
+Finance discovers CostReporter
 → Deploy across org
 → $2k/month immediately (250 engineers × $8)
 ```
@@ -175,14 +175,14 @@ Finance discovers Cost Guardian
 
 ---
 
-## Why Cost Guardian Will Dominate
+## Why CostReporter Will Dominate
 
 1. **Solves unsolved problem** — File format + MCP cost analysis is genuinely new
 2. **Immediate ROI** — Users see 30-60% cost reductions (real money saved)
 3. **Viral trigger** — "Save $420/month" is shareable, meme-worthy
 4. **Multi-channel advantage** — Only tool that unifies all Claude costs
 5. **Enterprise revenue** — Clear path from free to $2k-5k/month per customer
-6. **Network effect** — Each MCP/Skill wants Cost Guardian verification of savings
+6. **Network effect** — Each MCP/Skill wants CostReporter verification of savings
 
 **Target:** 10,000+ GitHub stars (2x caveman's 84k through superior pain point)
 

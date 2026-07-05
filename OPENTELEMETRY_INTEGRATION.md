@@ -1,4 +1,4 @@
-# Cost Guardian + OpenTelemetry Integration
+# CostReporter + OpenTelemetry Integration
 
 ## Why OpenTelemetry Matters
 
@@ -9,14 +9,14 @@ Enterprise teams already monitor infrastructure with:
 - Splunk
 - Dynatrace
 
-Cost Guardian needs to **emit observability signals** so costs appear alongside infrastructure metrics.
+CostReporter needs to **emit observability signals** so costs appear alongside infrastructure metrics.
 
 ---
 
 ## Architecture: OpenTelemetry Exporter
 
 ```
-Cost Guardian Core
+CostReporter Core
     ↓
 OpenTelemetry SDK
     ↓
@@ -123,7 +123,7 @@ Metric: cost_guardian.budget.utilization
 
 ```yaml
 # datadog-dashboard.yaml
-title: "Claude Code Cost Guardian"
+title: "Claude Code CostReporter"
 widgets:
   - type: timeseries
     title: "Daily Claude Costs"
@@ -185,7 +185,7 @@ rate(cost_guardian_operation_cost_total[1h]) by (mcp) > 0.5
 ```json
 {
   "dashboard": {
-    "title": "Cost Guardian - Claude Code Observability",
+    "title": "CostReporter - Claude Code Observability",
     "panels": [
       {
         "title": "Daily Claude Spend",
@@ -408,17 +408,17 @@ WEEK 4:
 
 ## Why This Wins Enterprises
 
-**Before Cost Guardian:**
+**Before CostReporter:**
 ```
 Finance team: "How much are we spending on Claude Code?"
 Engineering: "No idea, it's mixed with other API costs"
 Result: Cannot allocate, cannot budget, cannot optimize
 ```
 
-**With Cost Guardian + OpenTelemetry:**
+**With CostReporter + OpenTelemetry:**
 ```
 Finance team: "Claude Code cost is $42,000/month"
-Cost Guardian → Datadog: Breakdown by team, by operation, by MCP
+CostReporter → Datadog: Breakdown by team, by operation, by MCP
 Engineering: "Browser ops costing $18k. Let's optimize."
 Finance: Can allocate costs, set budgets, optimize spend
 Result: Enterprise-grade cost governance
@@ -626,7 +626,7 @@ class CostGuardian:
 
 ```
 ┌──────────────────────────────────────────────────────┐
-│ FILE FORMAT COST MATRIX - Cost Guardian             │
+│ FILE FORMAT COST MATRIX - CostReporter             │
 ├──────────────────────────────────────────────────────┤
 │                                                       │
 │ File Format    Pasted  Local   MCP    URL   Browser  │
@@ -738,9 +738,9 @@ WEEK 2:
 
 ---
 
-## Final Complete Cost Guardian Feature Set (MVP)
+## Final Complete CostReporter Feature Set (MVP)
 
-Cost Guardian now tracks **FIVE dimensions:**
+CostReporter now tracks **FIVE dimensions:**
 
 1. **Model Choice** — Sonnet vs Haiku (3.75x difference)
 2. **Operation Type** — Browser vs file (55x difference)

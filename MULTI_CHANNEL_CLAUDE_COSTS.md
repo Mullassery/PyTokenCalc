@@ -135,7 +135,7 @@ guardian.get_cost_by_user(period="week")
 
 ## 3. Multi-Channel Claude Cost Unification
 
-Users consume Claude through MULTIPLE providers simultaneously. Cost Guardian must unify:
+Users consume Claude through MULTIPLE providers simultaneously. CostReporter must unify:
 
 ```python
 guardian.get_unified_claude_costs(period="month")
@@ -382,7 +382,7 @@ class CostGuardian:
 - Bedrock dashboard = AWS spend only (doesn't see Pro subscriptions)
 - Azure Foundry = Azure spend only (doesn't see Bedrock)
 - Claude Console = Pro/Max subscriptions only (doesn't see API usage)
-- **Cost Guardian = Unified view across ALL channels**
+- **CostReporter = Unified view across ALL channels**
 
 **Enterprise value:**
 - Finance needs: "We're spending $4.3K/month on Claude, here's the breakdown"

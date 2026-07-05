@@ -1,4 +1,4 @@
-# Cost Guardian Roadmap
+# CostReporter Roadmap
 
 ## The Problem We're Solving
 
@@ -10,9 +10,9 @@ Reality:  "Idk, file reads? AI calls? Git operations?"
 Result:   "Can't optimize what you can't measure"
 ```
 
-**Cost Guardian changes this:**
+**CostReporter changes this:**
 ```
-Cost Guardian: "File reads = $32.40 (60% of your spend)"
+CostReporter: "File reads = $32.40 (60% of your spend)"
 Developer:    "Oh! I can optimize that"
 Result:       "Saves $420/month"
 ```
@@ -28,7 +28,7 @@ Result:       "Saves $420/month"
 | agent-observability | 7 | Framework for tracking | ❌ No spending limits, no model selector |
 | Pro Workflow | 2.6k | Multi-agent orchestration | ❌ No cost optimization |
 | claude_memory | 22 | Persistent memory | ❌ Not cost-focused |
-| **Cost Guardian** | TBD | **Real-time cost optimization** | ✅ Limits + recommendations + model selection |
+| **CostReporter** | TBD | **Real-time cost optimization** | ✅ Limits + recommendations + model selection |
 
 ### Revenue Potential
 
@@ -50,7 +50,7 @@ Enterprise:     Multi-org billing + compliance → $50M+ potential
 **What:** Every operation tracked + priced
 
 ```rust
-// beacon-core/src/cost_tracker.rs
+// cost-reporter/src/cost_tracker.rs
 pub struct OperationCost {
     operation: OperationType,  // FileRead, AICall, GitOp, etc.
     tokens_input: i32,
@@ -85,7 +85,7 @@ guardian.get_cost_breakdown(period="today")
 **What:** Up-to-date Claude model pricing
 
 ```rust
-// beacon-core/src/pricing.rs
+// cost-reporter/src/pricing.rs
 pub struct ModelPricing {
     model: String,
     input_cost_per_1k: f32,
@@ -309,7 +309,7 @@ Team Dashboard (Pro tier):
 ### Rust Core (Performance-Critical)
 
 ```
-beacon-core/src/
+cost-reporter/src/
 ├── cost_tracker.rs      → Track every operation
 ├── pricing.rs           → Model pricing database
 ├── analyzer.rs          → Cost trends + patterns
@@ -372,13 +372,13 @@ WEEK 6+
 ### Launch Strategy
 
 **Week 2 (MVP Launch):**
-- Reddit: r/ClaudeCode - "I just built Cost Guardian. Save 50% on Claude Code costs."
+- Reddit: r/ClaudeCode - "I just built CostReporter. Save 50% on Claude Code costs."
 - Twitter: Show before/after (spending breakdown, then recommendations)
-- HN: "Cost Guardian: Open-source cost tracker for Claude Code"
+- HN: "CostReporter: Open-source cost tracker for Claude Code"
 - Target: 50 stars
 
 **Week 4 (Phase 2 Launch):**
-- Reddit: "Cost Guardian Phase 2: Model selector saved me $420/month"
+- Reddit: "CostReporter Phase 2: Model selector saved me $420/month"
 - Case study: "Team switched to Haiku, cut costs 56%"
 - Target: 300 stars
 
@@ -402,7 +402,7 @@ WEEK 6+
 
 ---
 
-## Why Cost Guardian Will Win
+## Why CostReporter Will Win
 
 1. **Solves unsolved problem** — Only fragmented 7-star tool exists
 2. **Immediate ROI** — Users see $ savings (50-60% reductions are real)
@@ -419,7 +419,7 @@ WEEK 6+
 
 ### The Key Differentiator
 
-Cost Guardian tracks the **before/after impact of every skill installation**:
+CostReporter tracks the **before/after impact of every skill installation**:
 
 ```
 Day 1: Install "ModelSelector" skill
@@ -443,7 +443,7 @@ Day 2: Install "PromptCacheOptimizer" skill
 - "Which combination of skills is cheapest?"
 
 **Viral opportunity:**
-- Skills marketplace becomes **Cost Guardian integrated**
+- Skills marketplace becomes **CostReporter integrated**
 - Each skill shows: "Users report 45% cost reduction"
 - Reddit: "This skill saved me $420/month"
 
@@ -451,7 +451,7 @@ Day 2: Install "PromptCacheOptimizer" skill
 
 #### 1. Baseline Tracking
 ```rust
-// beacon-core/src/skill_impact.rs
+// cost-reporter/src/skill_impact.rs
 pub struct SkillImpact {
     skill_name: String,
     installed_at: DateTime,
@@ -508,22 +508,22 @@ get_skill_impact("ModelSelector")
 **Against existing tools:**
 - agent-observability: Shows cost, but NOT skill impact
 - Pro Workflow: Multi-agent, but NOT cost per feature
-- **Cost Guardian:** Show EXACT skill ROI
+- **CostReporter:** Show EXACT skill ROI
 
 **Viral loop:**
 1. User installs skill
-2. Cost Guardian shows: "This saved you 50%"
+2. CostReporter shows: "This saved you 50%"
 3. User shares: "This skill saved me $420/month" 
 4. 10,000 developers see it
 5. All 10k install the skill
-6. Cost Guardian becomes the **skill adoption platform**
+6. CostReporter becomes the **skill adoption platform**
 
 ---
 
 ## Messaging (For Launch)
 
 ### Reddit Post Title
-"Cost Guardian: Finally answer 'Why does Claude cost so much?' — Also shows which skills actually save you money"
+"CostReporter: Finally answer 'Why does Claude cost so much?' — Also shows which skills actually save you money"
 
 ### Key Talking Points
 1. **Visibility** — "File reads = 60% of your tokens"
@@ -533,9 +533,9 @@ get_skill_impact("ModelSelector")
 5. **Free + Pro** — "Free forever for personal use"
 
 ### Success Stories (Week 4+)
-- "Cost Guardian saved my team $6K/month"
-- "That ModelSelector skill has 50% cost reduction now verified by Cost Guardian"
-- "Enterprise using Cost Guardian for chargeback + compliance"
+- "CostReporter saved my team $6K/month"
+- "That ModelSelector skill has 50% cost reduction now verified by CostReporter"
+- "Enterprise using CostReporter for chargeback + compliance"
 
 ---
 
@@ -580,13 +580,13 @@ WEEK 7+: Enterprise/Monetize
 
 ## Final Note: Why Skills Impact is the Differentiator
 
-Cost Guardian doesn't just track spending. It becomes the **ROI engine for the Claude Code ecosystem**.
+CostReporter doesn't just track spending. It becomes the **ROI engine for the Claude Code ecosystem**.
 
 Every skill installed by 1000+ developers should show:
 - ✅ "Average cost reduction: 35%"
 - ✅ "Payback period: 8 days"
 - ✅ "Community score: 9.7/10"
 
-This turns Cost Guardian into a **marketplace multiplier** — better skills get adopted faster because their ROI is proven.
+This turns CostReporter into a **marketplace multiplier** — better skills get adopted faster because their ROI is proven.
 
-**Result:** Cost Guardian + Skills ecosystem = 10,000+ GitHub stars
+**Result:** CostReporter + Skills ecosystem = 10,000+ GitHub stars

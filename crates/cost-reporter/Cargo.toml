@@ -1,5 +1,5 @@
 [package]
-name = "beacon-core"
+name = "cost-reporter"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -20,5 +20,5 @@ tracing-subscriber = { workspace = true }
 tokio-test = "0.4"
 
 [[lib]]
-name = "beacon_core"
+name = "cost_reporter"
 path = "src/lib.rs"

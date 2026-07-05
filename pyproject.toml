@@ -3,16 +3,16 @@ requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin.build"
 
 [project]
-name = "claude-beacon"
+name = "pycost-reporter"
 version = "0.1.0"
-description = "Memory, Observability, and Audit for Claude Code — Rust core with Python API"
+description = "Real-time LLM cost tracking and optimization — Rust core with Python API"
 readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [
     {name = "Georgi Mammen Mullassery", email = "mullassery@gmail.com"}
 ]
-keywords = ["claude", "claude-code", "memory", "observability", "audit"]
+keywords = ["claude", "llm", "cost-tracking", "optimization", "budget"]
 
 dependencies = [
     "sqlalchemy>=2.0.0",
@@ -34,12 +34,12 @@ postgres = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Mullassery/ClaudeBeacon"
-Repository = "https://github.com/Mullassery/ClaudeBeacon"
-"Bug Tracker" = "https://github.com/Mullassery/ClaudeBeacon/issues"
+Homepage = "https://github.com/Mullassery/CostReporter"
+Repository = "https://github.com/Mullassery/CostReporter"
+"Bug Tracker" = "https://github.com/Mullassery/CostReporter/issues"
 
 [tool.maturin]
-module-name = "claude_beacon._core"
+module-name = "pycost_reporter._core"
 features = ["pyo3/extension-module"]
 python-source = "python/src"
 

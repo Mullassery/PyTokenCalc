@@ -1,10 +1,10 @@
-# CLAUDE.md — Cost Guardian
+# CLAUDE.md — CostReporter
 
 This file provides guidance to Claude Code when working with this repository.
 
 ## What We're Building
 
-**Cost Guardian** — Real-time cost optimizer for Claude Code. Answers: "Why does Claude cost so much, and what can I do about it?"
+**CostReporter** — Real-time cost optimizer for LLM platforms (Claude, Haiku, Hermes, etc.). Answers: "Why does my LLM usage cost so much, and what can I do about it?"
 
 **Core insight:** Users can't optimize what they can't measure. We measure, then recommend optimizations.
 
@@ -12,7 +12,7 @@ This file provides guidance to Claude Code when working with this repository.
 
 ## Architecture Overview
 
-### Layer 1: Rust Core (`crates/beacon-core/`)
+### Layer 1: Rust Core (`crates/cost-reporter/`)
 **High-performance cost tracking**
 
 - `cost_tracker.rs` — Track every operation + calculate cost in real-time
@@ -43,9 +43,9 @@ This file provides guidance to Claude Code when working with this repository.
 ### Communication Flow
 
 ```
-Claude Code operation
+LLM operation (Claude API, MCP, file read, etc.)
     ↓
-CostGuardian tracks (Python API)
+CostReporter tracks (Python API)
     ↓
 Rust Core calculates cost (PyO3 FFI)
     ↓
@@ -113,18 +113,18 @@ Kept updated with:
 ## Development Workflow
 
 ### Add a new operation type
-1. Add to `beacon-core/src/cost_tracker.rs` → `OperationType` enum
+1. Add to `cost-reporter/src/cost_tracker.rs` → `OperationType` enum
 2. Update `recommender.rs` with optimization hints
 3. Update Python API in `python/src/__init__.py`
 4. Test: `make test`
 
 ### Update pricing
-1. Edit `crates/beacon-core/src/pricing.rs`
+1. Edit `crates/cost-reporter/src/pricing.rs`
 2. Run: `cargo build`
 3. Pricing auto-reloaded next session
 
 ### Add recommendation
-1. Implement in `crates/beacon-core/src/recommender.rs`
+1. Implement in `crates/cost-reporter/src/recommender.rs`
 2. Expose in Python via `python/src/api.py`
 3. Test with `pytest tests/`
 
@@ -165,7 +165,7 @@ opps = guardian.detect_caching_opportunities()
 
 **Unit tests:**
 ```bash
-cargo test -p beacon-core          # Rust tests
+cargo test -p cost-reporter        # Rust tests
 pytest tests/ -v                   # Python tests
 ```
 
@@ -177,11 +177,11 @@ pytest tests/integration/          # End-to-end
 **Manual testing:**
 ```bash
 # 1. Start tracking
-cost-guardian serve
+cost-reporter serve
 
 # 2. Perform operations
 # 3. Check breakdown
-cost-guardian breakdown --period today
+cost-reporter breakdown --period today
 ```
 
 ---
