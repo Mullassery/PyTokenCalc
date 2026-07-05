@@ -1,156 +1,221 @@
-# CLAUDE.md
+# CLAUDE.md — Cost Guardian
 
 This file provides guidance to Claude Code when working with this repository.
 
-## Architecture
+## What We're Building
 
-ClaudeBeacon is a **Rust + Python hybrid** optimized for performance with Python flexibility:
+**Cost Guardian** — Real-time cost optimizer for Claude Code. Answers: "Why does Claude cost so much, and what can I do about it?"
+
+**Core insight:** Users can't optimize what they can't measure. We measure, then recommend optimizations.
+
+---
+
+## Architecture Overview
 
 ### Layer 1: Rust Core (`crates/beacon-core/`)
-**High-performance memory, observability, and audit system**
+**High-performance cost tracking**
 
-- `memory.rs` — Persistent project context storage
-- `observability.rs` — Tool call tracking and analytics
-- `audit.rs` — Immutable audit logs for compliance
-- `storage.rs` — SQLite/PostgreSQL connection pool
-- `mcp.rs` — MCP protocol handler
+- `cost_tracker.rs` — Track every operation + calculate cost in real-time
+- `pricing.rs` — Model pricing database (keeps Claude 3.5, Haiku, etc. prices)
+- `analyzer.rs` — Cost trends, anomaly detection, pattern analysis
+- `recommender.rs` — Model selector (use Haiku vs Sonnet), batch suggestions
+- `caching.rs` — Detect repeated prompts (enable cache for 90% savings)
+- `storage.rs` — SQLite backend (local, no cloud)
 
 **Why Rust:**
-- ✅ Fast (~100x faster than pure Python for I/O)
-- ✅ Memory-efficient (critical for observability data)
-- ✅ Safe concurrency (for multi-session handling)
+- ✅ Performance-critical (every operation tracked = high volume)
+- ✅ Memory-efficient (streaming ops, not buffering)
+- ✅ Safe concurrency (handle multiple sessions)
 
-### Layer 2: Python Wrapper (`python/`)
-**Native Python API with PyO3 bindings**
+### Layer 2: Python Wrapper (`python/src/`)
+**Easy-to-use API**
 
-- `python/src/lib.rs` — PyO3 FFI wrapping Rust core
-- `python/src/__init__.py` — High-level Pythonic API
+- `__init__.py` — Main `CostGuardian` class
+- `api.py` — REST API for dashboards/reports
+- `cli.py` — Command-line interface
+- `alerts.py` — Slack/webhook notifications
 
-**Why Python wrapper:**
-- ✅ Integrate with pandas, SQLAlchemy, FastAPI
-- ✅ Natural Python ecosystem (logging, testing, deployment)
-- ✅ Easier to extend with Python libraries
+**Why Python:**
+- ✅ Natural data science stack (pandas, matplotlib)
+- ✅ Easy CLI (Click framework)
+- ✅ Ecosystem integration (SQLAlchemy, FastAPI)
 
 ### Communication Flow
 
 ```
-Claude Code
-     ↓
-TypeScript Skill (future)
-     ↓
-Python API (claude_beacon.Beacon)
-     ↓
-Rust Core (_core.Beacon) [PyO3 extension]
-     ↓
-SQLite/PostgreSQL
+Claude Code operation
+    ↓
+CostGuardian tracks (Python API)
+    ↓
+Rust Core calculates cost (PyO3 FFI)
+    ↓
+SQLite stores operation + cost
+    ↓
+Python returns: breakdown, trends, recommendations
 ```
 
-## Build & Test Commands
+---
 
-**Install dependencies:**
+## Build & Development
+
+### Install
 ```bash
-make install
+make install      # Install deps + pre-commit hooks
 ```
 
-**Build Rust + Python:**
+### Build
 ```bash
-make build          # Full build
-maturin develop     # Dev install (hot reload)
-maturin build --release  # Release wheel
+make build        # Full Rust + Python build
+make dev          # Dev install with hot reload (maturin)
 ```
 
-**Tests:**
+### Test
 ```bash
-cargo test --workspace --release    # Rust tests
-pytest tests/ -v                    # Python tests
-pytest --cov=tests                  # With coverage
+make test         # All tests (Rust + Python)
+make test-rust    # Rust only
+make test-python  # Python only
 ```
 
-**Format & lint:**
+### Format & Lint
 ```bash
-make fmt
-make lint
+make fmt          # Format code
+make lint         # Lint Rust + Python
 ```
 
-## Project Structure
+---
 
-```
-ClaudeBeacon/
-├── Cargo.toml                       # Workspace root
-├── crates/
-│   └── beacon-core/                # Rust core (high-performance)
-│       ├── Cargo.toml
-│       └── src/
-│           ├── lib.rs              # Entry point
-│           ├── memory.rs           # Context persistence
-│           ├── observability.rs    # Tool tracking
-│           ├── audit.rs            # Compliance logs
-│           ├── storage.rs          # DB backend
-│           └── mcp.rs              # Protocol handler
-│
-├── pyproject.toml                   # Python package config
-├── python/
-│   └── src/
-│       ├── lib.rs                  # PyO3 bindings
-│       └── __init__.py             # Python API
-│
-├── tests/                           # Tests (both Rust + Python)
-├── CLAUDE.md                        # This file
-└── Makefile                         # Dev tasks
-```
+## Key Implementation Details
 
-## Important Implementation Details
+### Cost Tracking Pipeline
 
-### Memory System
-- Stores context in SQLite (default: `~/.claude/beacondb/memory.sqlite`)
-- Serializes to JSON for compatibility
-- Summarizes to avoid token waste
-- Session-aware (multiple parallel sessions supported)
+1. **Operation entry:** Every tool call (file_read, ai_call, git_op) is tracked
+2. **Token counting:** Input + output tokens recorded
+3. **Model lookup:** Get model pricing from database
+4. **Cost calculation:** `(input_tokens * input_rate + output_tokens * output_rate) / 1M`
+5. **Storage:** Save operation + cost to SQLite
+6. **Aggregation:** Group by operation type, time period, model
 
-### Observability
-- Zero-copy logging (Rust performance)
-- Tracks: tool calls, arguments, responses, latency, tokens
-- Aggregates: error rates, slowest operations, token distribution
-- Real-time queries via Python API
+### Real-time Attribution
 
-### Audit Logging
-- Immutable append-only (cannot be deleted)
-- HIPAA/SOC2 compliant (configurable retention)
-- Encrypted at rest (optional)
-- Export to PDF/JSON/CSV
+Users get: "File reads = 60% of your tokens ($32.40 today)"
 
-### Storage Backends
-- **SQLite** (default, local, zero-config)
-- **PostgreSQL** (production, multi-user, replication)
-- Configurable via connection string
+Instead of: "You spent $47 total" (not helpful)
 
-## Build Constraints
+### Model Pricing Database
 
-### PyO3 Runtime
-- `tokio::runtime::Runtime` required for async Rust in Python
-- `block_on()` converts async to sync at FFI boundary
-- Python GIL released during Rust execution
+Kept updated with:
+- Claude 3.5 Sonnet: $3.00/$15.00 per 1M tokens
+- Claude 3.5 Haiku: $0.80/$4.00 per 1M tokens  
+- Claude 3 Opus: $15.00/$75.00 per 1M tokens
 
-### Memory Safety
-- Rust ownership model prevents memory leaks
-- Python ownership via PyO3 reference counting
-- No unsafe code (preferred)
+---
+
+## Development Workflow
+
+### Add a new operation type
+1. Add to `beacon-core/src/cost_tracker.rs` → `OperationType` enum
+2. Update `recommender.rs` with optimization hints
+3. Update Python API in `python/src/__init__.py`
+4. Test: `make test`
+
+### Update pricing
+1. Edit `crates/beacon-core/src/pricing.rs`
+2. Run: `cargo build`
+3. Pricing auto-reloaded next session
+
+### Add recommendation
+1. Implement in `crates/beacon-core/src/recommender.rs`
+2. Expose in Python via `python/src/api.py`
+3. Test with `pytest tests/`
+
+---
 
 ## Common Tasks
 
-**Add a new metric to observability:**
-1. Add field to `ObservabilityTracker` struct
-2. Update `get_summary()` to include new metric
-3. Update Python wrapper in `__init__.py`
-4. Test with `pytest tests/test_observability.py`
-
-**Add database schema:**
-1. Create migration in `crates/beacon-core/migrations/`
-2. Update `StorageBackend` to handle new schema
-3. Rebuild with `maturin develop`
-
-**Deploy Python package:**
-```bash
-maturin build --release
-twine upload dist/*.whl
+**Track new operation:**
+```rust
+// In Rust:
+let cost = tracker.track_operation(OperationCost {
+    operation: OperationType::FileRead,
+    tokens_input: 450,
+    tokens_output: 120,
+    model: "claude-3-5-sonnet",
+    cost_usd: 0.0145,
+    timestamp: now(),
+})?;
 ```
+
+**Get daily breakdown:**
+```python
+# In Python:
+breakdown = guardian.get_cost_breakdown(period="today")
+# Returns: {"file_read": 32.40, "ai_call": 15.20, ...}
+```
+
+**Detect caching opportunities:**
+```python
+# In Python:
+opps = guardian.detect_caching_opportunities()
+# Returns: [{"prompt": "...", "occurrences": 12, "savings": 2.10}]
+```
+
+---
+
+## Testing Strategy
+
+**Unit tests:**
+```bash
+cargo test -p beacon-core          # Rust tests
+pytest tests/ -v                   # Python tests
+```
+
+**Integration tests:**
+```bash
+pytest tests/integration/          # End-to-end
+```
+
+**Manual testing:**
+```bash
+# 1. Start tracking
+cost-guardian serve
+
+# 2. Perform operations
+# 3. Check breakdown
+cost-guardian breakdown --period today
+```
+
+---
+
+## Performance Targets
+
+- Cost calculation: <1ms per operation
+- Daily breakdown query: <5ms
+- Trend analysis: <10ms
+- Model selector decision: <50ms
+
+All critical for real-time feedback.
+
+---
+
+## Important Constraints
+
+1. **Pricing accuracy:** Must stay in sync with Anthropic pricing
+2. **Real-time performance:** Cost calc must not block user
+3. **Privacy:** All data stays local (SQLite, no cloud)
+4. **Accuracy:** Token counting MUST match Claude's actual usage
+
+---
+
+## Future Phases
+
+- Phase 2: Model selector + prompt caching detector
+- Phase 3: Auto-optimization + Slack alerts
+- Phase 4: Team dashboards + compliance reporting
+
+---
+
+## References
+
+- [Anthropic Pricing](https://www.anthropic.com/pricing)
+- [Claude Code Integration Guide](https://docs.anthropic.com/en/docs/about-claude/tool-use)
+- [MCP Protocol](https://modelcontextprotocol.io/)
