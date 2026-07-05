@@ -121,6 +121,7 @@ class CostReporter:
         user_timezone: str = None,
         cloud_region: str = None,
         billing_plan: str = None,
+        pricing_tier: str = None,
     ) -> dict:
         """
         Track a single operation (called silently in background).
@@ -162,6 +163,12 @@ class CostReporter:
                 pro: \$20/month fixed
                 max: \$200/month fixed (best for high volume)
                 enterprise: Custom negotiated (usually 20-50% discount)
+            pricing_tier: Time-of-day pricing tier ("peak", "standard", "off_peak", "weekend")
+                CRITICAL: Pricing varies 20-40% by hour
+                off_peak: 10 PM - 6 AM (30% discount, 0.7x multiplier)
+                standard: 6 AM - 5 PM (baseline, 1.0x multiplier)
+                peak: 5 PM - 10 PM weekdays (30% premium, 1.3x multiplier)
+                weekend: Weekends (15% discount, 0.85x multiplier)
 
         Returns:
             Cost data with multipliers applied
@@ -176,7 +183,8 @@ class CostReporter:
                 user="alice",
                 user_timezone="America/New_York",  # Daily reset at midnight EST
                 cloud_region="eu-west-1",  # EU premium: +15% on Bedrock
-                billing_plan="max"  # User on Max plan: \$200/month fixed
+                billing_plan="max",  # User on Max plan: \$200/month fixed
+                pricing_tier="off_peak"  # Run at 2 AM: 30% discount (0.7x)
             )
             print(f"Cost: ${cost['cost_usd']}")
         """
@@ -194,6 +202,7 @@ class CostReporter:
             user_timezone=user_timezone,
             cloud_region=cloud_region,
             billing_plan=billing_plan,
+            pricing_tier=pricing_tier,
         )
         return json.loads(result)
 

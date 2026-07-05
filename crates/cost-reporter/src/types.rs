@@ -18,6 +18,65 @@ pub enum BillingPlan {
     Enterprise,
 }
 
+/// Peak vs off-peak pricing
+/// CRITICAL: Pricing varies by time of day (20-40% variance)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum PricingTier {
+    /// Off-peak hours (lower price, usually 10 PM - 6 AM local time)
+    OffPeak,
+    /// Standard hours (medium price, usually 6 AM - 5 PM local time)
+    Standard,
+    /// Peak hours (higher price, usually 5 PM - 10 PM local time, weekdays)
+    Peak,
+    /// Weekend (variable, some providers offer discounts)
+    Weekend,
+}
+
+impl PricingTier {
+    /// Determine pricing tier based on hour and day of week
+    /// Takes local hour (0-23) and day of week (0=Sunday, 6=Saturday)
+    pub fn from_local_time(hour: u32, weekday: u32) -> Self {
+        // Weekend (Saturday=6, Sunday=0)
+        if weekday == 0 || weekday == 6 {
+            return PricingTier::Weekend;
+        }
+
+        // Weekday pricing tiers
+        match hour {
+            // Off-peak: 10 PM - 6 AM (22-5)
+            22..=23 | 0..=5 => PricingTier::OffPeak,
+            // Peak: 5 PM - 10 PM (17-21)
+            17..=21 => PricingTier::Peak,
+            // Standard: 6 AM - 5 PM (6-16)
+            6..=16 => PricingTier::Standard,
+            _ => PricingTier::Standard,
+        }
+    }
+
+    pub fn description(&self) -> &'static str {
+        match self {
+            PricingTier::OffPeak => "Off-peak (10 PM - 6 AM) - Lowest price",
+            PricingTier::Standard => "Standard (6 AM - 5 PM) - Regular price",
+            PricingTier::Peak => "Peak (5 PM - 10 PM weekdays) - Higher price",
+            PricingTier::Weekend => "Weekend - Variable pricing",
+        }
+    }
+
+    /// Pricing multiplier for this tier
+    /// OffPeak: 0.7x (30% discount from standard)
+    /// Standard: 1.0x (baseline)
+    /// Peak: 1.3x (30% premium over standard)
+    /// Weekend: 0.85x (15% discount from standard)
+    pub fn multiplier(&self) -> f64 {
+        match self {
+            PricingTier::OffPeak => 0.70,
+            PricingTier::Standard => 1.00,
+            PricingTier::Peak => 1.30,
+            PricingTier::Weekend => 0.85,
+        }
+    }
+}
+
 /// Currency code (ISO 4217)
 /// CRITICAL: Never convert currencies - FX risk is real
 /// Report in original provider currency, not user's local currency
@@ -283,11 +342,14 @@ pub struct Operation {
     pub cloud_region: Option<String>,
     /// Billing plan when operation occurred (Pro/Max/Enterprise/Api)
     /// CRITICAL: Pricing varies 200%+ between plans
-    /// Pro: \$20/month fixed (unlimited usage within limits)
-    /// Max: \$200/month fixed (higher limits)
-    /// Enterprise: Custom negotiated (typically 20-50% discount)
-    /// Api: Pay-per-token (highest cost per token)
     pub billing_plan: Option<BillingPlan>,
+    /// Pricing tier based on time of day (peak/off-peak/standard/weekend)
+    /// CRITICAL: Pricing varies 20-40% by hour
+    /// Off-peak (10 PM-6 AM): 0.7x (30% discount)
+    /// Standard (6 AM-5 PM): 1.0x (baseline)
+    /// Peak (5 PM-10 PM weekdays): 1.3x (30% premium)
+    /// Weekend: 0.85x (15% discount)
+    pub pricing_tier: Option<PricingTier>,
     /// User who triggered this (if applicable)
     pub user: Option<String>,
     /// Tags for filtering
@@ -317,6 +379,7 @@ impl Operation {
             user_timezone: None,
             cloud_region: None,
             billing_plan: None,
+            pricing_tier: None,
             user: None,
             tags: HashMap::new(),
             instruction_files: Vec::new(),
@@ -362,6 +425,11 @@ impl Operation {
 
     pub fn with_billing_plan(mut self, plan: BillingPlan) -> Self {
         self.billing_plan = Some(plan);
+        self
+    }
+
+    pub fn with_pricing_tier(mut self, tier: PricingTier) -> Self {
+        self.pricing_tier = Some(tier);
         self
     }
 

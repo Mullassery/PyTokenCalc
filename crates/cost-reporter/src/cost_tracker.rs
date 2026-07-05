@@ -89,7 +89,7 @@ impl CostTracker {
         }
     }
 
-    /// Calculate cost multiplier based on file source and operation type
+    /// Calculate cost multiplier based on file source, operation type, and pricing tier
     fn calculate_multiplier(&self, operation: &Operation) -> f64 {
         // Data source multiplier (CRITICAL: can be 100x-1000x+)
         let data_multiplier = operation
@@ -100,7 +100,12 @@ impl CostTracker {
 
         // If data source is present, it dominates the multiplier
         if operation.data_source.is_some() {
-            return data_multiplier;
+            // Apply pricing tier multiplier on top
+            let tier_multiplier = operation
+                .pricing_tier
+                .map(|t| t.multiplier())
+                .unwrap_or(1.0);
+            return data_multiplier * tier_multiplier;
         }
 
         // File source multiplier
@@ -120,7 +125,13 @@ impl CostTracker {
             OperationType::InstructionContext => 1.0, // Direct cost (no multiplier, already included)
         };
 
-        operation_multiplier
+        // Apply pricing tier multiplier (peak/off-peak)
+        let tier_multiplier = operation
+            .pricing_tier
+            .map(|t| t.multiplier())
+            .unwrap_or(1.0);
+
+        operation_multiplier * tier_multiplier
     }
 
     /// Create a session (auto-detected or manual)

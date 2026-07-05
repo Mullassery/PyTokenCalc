@@ -41,6 +41,7 @@ impl PyCostReporter {
         user_timezone: Option<&str>,
         cloud_region: Option<&str>,
         billing_plan: Option<&str>,
+        pricing_tier: Option<&str>,
     ) -> PyResult<String> {
         let op_type = match operation_type {
             "api_call" => OperationType::ApiCall,
@@ -89,6 +90,15 @@ impl PyCostReporter {
                 "pro" => Some(cost_reporter::BillingPlan::Pro),
                 "max" => Some(cost_reporter::BillingPlan::Max),
                 "enterprise" => Some(cost_reporter::BillingPlan::Enterprise),
+                _ => None,
+            };
+        }
+        if let Some(tier) = pricing_tier {
+            op.pricing_tier = match tier {
+                "peak" => Some(cost_reporter::PricingTier::Peak),
+                "off_peak" | "offpeak" => Some(cost_reporter::PricingTier::OffPeak),
+                "standard" => Some(cost_reporter::PricingTier::Standard),
+                "weekend" => Some(cost_reporter::PricingTier::Weekend),
                 _ => None,
             };
         }
