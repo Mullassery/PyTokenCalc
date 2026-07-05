@@ -15,7 +15,8 @@ uuid = { workspace = true }
 sqlx = { workspace = true, features = ["runtime-tokio-rustls", "sqlite"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { workspace = true }
+chrono-tz = { workspace = true }
 
 [dev-dependencies]
 tokio-test = "0.4"

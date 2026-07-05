@@ -1,13 +1,110 @@
 //! Cost analysis and recommendations generation
 
 use crate::types::Operation;
+use chrono_tz::Tz;
 use std::collections::HashMap;
+use std::str::FromStr;
 
 pub struct CostAnalyzer;
 
 impl CostAnalyzer {
     pub fn new() -> Self {
         Self
+    }
+
+    /// Convert UTC timestamp to user's local date string using their timezone
+    pub fn utc_to_local_date(utc_time: chrono::DateTime<chrono::Utc>, user_tz: &str) -> String {
+        if let Ok(tz) = Tz::from_str(user_tz) {
+            let local = utc_time.with_timezone(&tz);
+            local.format("%Y-%m-%d").to_string()
+        } else {
+            utc_time.format("%Y-%m-%d").to_string()
+        }
+    }
+
+    /// Generate timezone-aware daily cost breakdown
+    /// Groups operations by their local date in each user's timezone
+    /// Critical for distributed teams with budget resets at local midnight
+    pub fn daily_breakdown_by_timezone(&self, operations: &[Operation]) -> anyhow::Result<serde_json::Value> {
+        if operations.is_empty() {
+            return Ok(serde_json::json!({
+                "period": "daily",
+                "timezone_aware": true,
+                "total_cost_usd": 0.0,
+                "total_tokens": 0,
+                "by_operation_type": {},
+                "by_file_format": {},
+                "by_mcp": {},
+                "by_user_timezone": {},
+            }));
+        }
+
+        let mut total_cost = 0.0;
+        let mut total_tokens = 0u32;
+        let mut by_type: HashMap<String, (u32, f64)> = HashMap::new();
+        let mut by_format: HashMap<String, (u32, f64)> = HashMap::new();
+        let mut by_mcp: HashMap<String, (u32, f64)> = HashMap::new();
+        let mut by_tz: HashMap<String, (u32, f64, u32)> = HashMap::new(); // (count, cost, tokens)
+
+        for op in operations {
+            let cost_est = self.estimate_cost(op);
+            total_cost += cost_est;
+            total_tokens += op.tokens_input + op.tokens_output;
+
+            // By operation type
+            let op_type = format!("{:?}", op.operation_type);
+            let entry = by_type.entry(op_type).or_insert((0, 0.0));
+            entry.0 += 1;
+            entry.1 += cost_est;
+
+            // By file format
+            if let Some(ref source) = op.file_source {
+                let fmt = source.description().to_string();
+                let entry = by_format.entry(fmt).or_insert((0, 0.0));
+                entry.0 += 1;
+                entry.1 += cost_est;
+            }
+
+            // By MCP
+            if let Some(ref mcp) = op.mcp_name {
+                let entry = by_mcp.entry(mcp.clone()).or_insert((0, 0.0));
+                entry.0 += 1;
+                entry.1 += cost_est;
+            }
+
+            // By user timezone (for team reporting)
+            if let Some(ref tz) = op.user_timezone {
+                let entry = by_tz.entry(tz.clone()).or_insert((0, 0.0, 0));
+                entry.0 += 1;
+                entry.1 += cost_est;
+                entry.2 += op.tokens_input + op.tokens_output;
+            }
+        }
+
+        Ok(serde_json::json!({
+            "period": "daily",
+            "timezone_aware": true,
+            "total_cost_usd": (total_cost * 100.0).round() / 100.0,
+            "total_tokens": total_tokens,
+            "by_operation_type": by_type.into_iter()
+                .map(|(k, (count, cost))| (k, serde_json::json!({"count": count, "cost_usd": (cost*100.0).round()/100.0})))
+                .collect::<HashMap<_, _>>(),
+            "by_file_format": by_format.into_iter()
+                .map(|(k, (count, cost))| (k, serde_json::json!({"count": count, "cost_usd": (cost*100.0).round()/100.0})))
+                .collect::<HashMap<_, _>>(),
+            "by_mcp": by_mcp.into_iter()
+                .map(|(k, (count, cost))| (k, serde_json::json!({"calls": count, "cost_usd": (cost*100.0).round()/100.0})))
+                .collect::<HashMap<_, _>>(),
+            "by_user_timezone": by_tz.into_iter()
+                .map(|(tz, (count, cost, tokens))| {
+                    (tz, serde_json::json!({
+                        "operations": count,
+                        "cost_usd": (cost*100.0).round()/100.0,
+                        "tokens": tokens
+                    }))
+                })
+                .collect::<HashMap<_, _>>(),
+        }))
     }
 
     /// Generate daily cost breakdown

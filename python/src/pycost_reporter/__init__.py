@@ -118,6 +118,7 @@ class CostReporter:
         user: str = None,
         file_source: str = None,
         mcp_name: str = None,
+        user_timezone: str = None,
     ) -> dict:
         """
         Track a single operation (called silently in background).
@@ -146,6 +147,8 @@ class CostReporter:
                 - "mcp_stream": MCP stream (2.4x)
 
             mcp_name: MCP/Skill name (e.g., "web_search", "code_execution")
+            user_timezone: User's timezone (IANA format, e.g., "America/New_York", "Europe/London")
+                CRITICAL: Used for daily budget resets, session grouping, team reporting
 
         Returns:
             Cost data with multipliers applied
@@ -156,7 +159,9 @@ class CostReporter:
                 tokens_input=450,
                 tokens_output=120,
                 model="claude-3-5-haiku",
-                file_source="pdf_url"  # 3.6x multiplier
+                file_source="pdf_url",  # 3.6x multiplier
+                user="alice",
+                user_timezone="America/New_York"  # Daily reset at midnight EST
             )
             print(f"Cost: ${cost['cost_usd']}")
         """
@@ -171,6 +176,7 @@ class CostReporter:
             user=user,
             file_source=file_source,
             mcp_name=mcp_name,
+            user_timezone=user_timezone,
         )
         return json.loads(result)
 
