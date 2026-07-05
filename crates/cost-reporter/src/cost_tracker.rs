@@ -112,6 +112,19 @@ impl CostTracker {
 
     /// Calculate cost multiplier based on file source and operation type
     fn calculate_multiplier(&self, operation: &Operation) -> f64 {
+        // Data source multiplier (CRITICAL: can be 100x-1000x+)
+        let data_multiplier = operation
+            .data_source
+            .as_ref()
+            .map(|ds| ds.cost_multiplier())
+            .unwrap_or(1.0);
+
+        // If data source is present, it dominates the multiplier
+        if operation.data_source.is_some() {
+            return data_multiplier;
+        }
+
+        // File source multiplier
         let file_multiplier = operation
             .file_source
             .as_ref()
@@ -122,9 +135,9 @@ impl CostTracker {
             OperationType::ApiCall => 1.0, // Baseline
             OperationType::FileRead => file_multiplier, // Apply file source multiplier
             OperationType::BrowserOp => 55.0, // 55x more expensive than file read
-            OperationType::McpInvocation => 2.4, // MCP protocol overhead
+            OperationType::McpInvocation => 2.4, // MCP protocol overhead (small data)
             OperationType::GitOp => 0.8, // Caching reduces cost
-            OperationType::DatabaseQuery => 2.0, // SQL parsing + network
+            OperationType::DatabaseQuery => 2.0, // Small SQL query (use DataSource for big queries!)
             OperationType::InstructionContext => 1.0, // Direct cost (no multiplier, already included)
         };
 

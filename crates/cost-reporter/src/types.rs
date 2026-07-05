@@ -4,6 +4,46 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use std::collections::HashMap;
 
+/// Data source types for MCP operations (database reads, S3 access, etc)
+/// CRITICAL: These are massive token consumers - 100x-1000x more than simple file reads
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum DataSource {
+    /// Database query (SQL, MongoDB, etc) - cost scales with result set size
+    Database {
+        /// Database type
+        db_type: String, // "postgres", "mysql", "mongodb", "snowflake", etc
+        /// Estimated rows returned
+        row_count: u32,
+        /// Approximate data size in MB
+        data_size_mb: f32,
+    },
+    /// S3 bucket access
+    S3 {
+        /// Number of files listed/accessed
+        file_count: u32,
+        /// Total data size in MB
+        data_size_mb: f32,
+    },
+    /// REST API call (with response payload)
+    Api {
+        /// API endpoint
+        endpoint: String,
+        /// Response size in KB
+        response_size_kb: u32,
+    },
+    /// Data warehouse (Snowflake, BigQuery, Redshift, etc)
+    DataWarehouse {
+        /// Warehouse type
+        warehouse_type: String,
+        /// Rows returned
+        row_count: u64, // Can be millions
+        /// Columns selected
+        column_count: u32,
+        /// Approximate data size in MB
+        data_size_mb: f32,
+    },
+}
+
 /// Operation type (what costs money)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum OperationType {
@@ -104,6 +144,8 @@ pub struct Operation {
     pub file_source: Option<FileSource>,
     /// MCP name (if MCP invocation)
     pub mcp_name: Option<String>,
+    /// Data source type (database, S3, API, etc) - for MCP data operations
+    pub data_source: Option<DataSource>,
     /// Timestamp (UTC)
     pub timestamp: chrono::DateTime<chrono::Utc>,
     /// User who triggered this (if applicable)
@@ -135,6 +177,7 @@ impl Operation {
             user: None,
             tags: HashMap::new(),
             instruction_files: Vec::new(),
+            data_source: None,
         }
     }
 
@@ -172,6 +215,89 @@ impl Operation {
     pub fn total_tokens_with_context(&self) -> u32 {
         let instruction_tokens: u32 = self.instruction_files.iter().map(|f| f.tokens).sum();
         self.tokens_input + self.tokens_output + instruction_tokens
+    }
+
+    /// Estimate data-driven token explosion for this operation
+    pub fn estimate_data_tokens(&self) -> u32 {
+        match &self.data_source {
+            Some(source) => source.estimate_tokens(),
+            None => 0,
+        }
+    }
+
+    pub fn with_data_source(mut self, source: DataSource) -> Self {
+        self.data_source = Some(source);
+        self
+    }
+}
+
+impl DataSource {
+    /// Estimate token count based on data volume
+    /// CRITICAL: These are not linear - 1M rows = exponential token growth
+    pub fn estimate_tokens(&self) -> u32 {
+        match self {
+            DataSource::Database { row_count, data_size_mb, .. } => {
+                // Database result sets:
+                // - 100 rows, 1MB: ~500 tokens
+                // - 10k rows, 100MB: ~50,000 tokens
+                // - 1M rows, 10GB: ~5,000,000 tokens
+                // Rule: ~0.5 tokens per byte + 500 base
+                let data_tokens = (data_size_mb * 1024.0 * 1024.0 * 0.5) as u32;
+                let row_tokens = (*row_count as f32 * 5.0) as u32; // Each row adds overhead
+                data_tokens + row_tokens + 500
+            }
+            DataSource::S3 { file_count, data_size_mb } => {
+                // S3 bucket listing is expensive
+                // - 10 files, 100MB: ~50k tokens (file listing overhead)
+                // - 1000 files, 10GB: ~5M tokens
+                let listing_tokens = (*file_count as f32 * 100.0) as u32; // Each file in listing
+                let data_tokens = (data_size_mb * 1024.0 * 1024.0 * 0.5) as u32;
+                listing_tokens + data_tokens + 1000
+            }
+            DataSource::Api { response_size_kb, .. } => {
+                // API responses (usually JSON, less dense than raw data)
+                // ~1 token per 4 bytes
+                (*response_size_kb as f32 * 1024.0 * 0.25) as u32
+            }
+            DataSource::DataWarehouse { row_count, column_count, data_size_mb, .. } => {
+                // Data warehouse queries are MASSIVE
+                // - Snowflake 100k rows × 50 columns: ~250k tokens
+                // - BigQuery 1M rows × 100 columns: ~2.5M tokens
+                let data_tokens = (data_size_mb * 1024.0 * 1024.0 * 0.5) as u32;
+                let row_tokens = (*row_count as f32 * 5.0) as u32;
+                let column_tokens = (*column_count as f32 * 50.0) as u32; // Column metadata
+                data_tokens + row_tokens + column_tokens + 2000
+            }
+        }
+    }
+
+    /// Cost multiplier for data source (compared to simple API call)
+    /// A simple 100-token API call = baseline (1.0x)
+    /// A 1M row database read = 50,000x+
+    pub fn cost_multiplier(&self) -> f64 {
+        let estimated_tokens = self.estimate_tokens();
+        let baseline_tokens = 100.0;
+        (estimated_tokens as f64 / baseline_tokens).max(1.0)
+    }
+
+    pub fn description(&self) -> String {
+        match self {
+            DataSource::Database { db_type, row_count, data_size_mb } => {
+                format!("{} query: {} rows, {:.1}MB", db_type, row_count, data_size_mb)
+            }
+            DataSource::S3 { file_count, data_size_mb } => {
+                format!("S3 access: {} files, {:.1}MB", file_count, data_size_mb)
+            }
+            DataSource::Api { endpoint, response_size_kb } => {
+                format!("API {}: {}KB response", endpoint, response_size_kb)
+            }
+            DataSource::DataWarehouse { warehouse_type, row_count, column_count, data_size_mb } => {
+                format!(
+                    "{} query: {} rows × {} cols, {:.1}MB",
+                    warehouse_type, row_count, column_count, data_size_mb
+                )
+            }
+        }
     }
 }
 
