@@ -125,6 +125,7 @@ impl CostTracker {
             OperationType::McpInvocation => 2.4, // MCP protocol overhead
             OperationType::GitOp => 0.8, // Caching reduces cost
             OperationType::DatabaseQuery => 2.0, // SQL parsing + network
+            OperationType::InstructionContext => 1.0, // Direct cost (no multiplier, already included)
         };
 
         operation_multiplier

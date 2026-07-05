@@ -19,6 +19,9 @@ pub enum OperationType {
     GitOp,
     /// Database query (1.2x-5x multiplier)
     DatabaseQuery,
+    /// Markdown instruction context read (.claude/claude.md, agent.md, workflow.md, etc)
+    /// CRITICAL: Can be 10x-50x more expensive than the actual operation
+    InstructionContext,
 }
 
 /// File source determines cost multiplier (36x variance: CSV vs PDF URL)
@@ -40,6 +43,17 @@ pub enum FileSource {
     McpStream,
     /// Unknown source (1.0x baseline)
     Unknown,
+}
+
+/// Instruction context file loaded (adds to operation cost)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstructionFile {
+    /// Filename (.claude/claude.md, agent.md, workflow.md, etc)
+    pub filename: String,
+    /// Token count of this file's content
+    pub tokens: u32,
+    /// Cost contribution from this file
+    pub cost_usd: f64,
 }
 
 impl FileSource {
@@ -96,6 +110,9 @@ pub struct Operation {
     pub user: Option<String>,
     /// Tags for filtering
     pub tags: HashMap<String, String>,
+    /// Instruction context files read for this operation
+    /// CRITICAL COST MULTIPLIER: claude.md, agent.md, workflow.md, etc.
+    pub instruction_files: Vec<InstructionFile>,
 }
 
 impl Operation {
@@ -117,6 +134,7 @@ impl Operation {
             timestamp: chrono::Utc::now(),
             user: None,
             tags: HashMap::new(),
+            instruction_files: Vec::new(),
         }
     }
 
@@ -143,6 +161,17 @@ impl Operation {
     pub fn with_tag(mut self, key: String, value: String) -> Self {
         self.tags.insert(key, value);
         self
+    }
+
+    pub fn with_instruction_files(mut self, files: Vec<InstructionFile>) -> Self {
+        self.instruction_files = files;
+        self
+    }
+
+    /// Total tokens including instruction context
+    pub fn total_tokens_with_context(&self) -> u32 {
+        let instruction_tokens: u32 = self.instruction_files.iter().map(|f| f.tokens).sum();
+        self.tokens_input + self.tokens_output + instruction_tokens
     }
 }
 
