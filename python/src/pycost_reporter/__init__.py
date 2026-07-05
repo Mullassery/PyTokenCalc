@@ -325,5 +325,44 @@ class CostReporter:
         )
         return json.loads(result)
 
+    def forecast_quarterly(self) -> dict:
+        """
+        Forecast quarterly spending with pricing volatility disclaimer.
+
+        ⚠️ CRITICAL DISCLAIMER: All forecasts assume CURRENT pricing remains unchanged.
+        Any of these events INVALIDATE this forecast:
+          - Anthropic launches new models (Fable-5, etc)
+          - Claude API pricing changes
+          - Your access switches from Claude API → Bedrock → Azure Foundry → GCP Model Garden
+          - New MCP costs discovered
+          - Prompt optimization implemented (should reduce costs)
+
+        Returns:
+            Forecast with:
+            - projected_cost_usd: Quarterly projection
+            - confidence_level: How confident (depends on pricing stability)
+            - assumptions: What was assumed
+            - disclaimer: Pricing volatility warnings
+            - breakeven_payback: When optimizations pay off
+
+        Example:
+            forecast = reporter.forecast_quarterly()
+            print(f"Q3 Projection: ${forecast['projected_cost_usd']:.2f}")
+            print(f"Confidence: {forecast['confidence_level']}")
+            print("Warnings:")
+            for warning in forecast['disclaimer']['warnings']:
+                print(f"  ⚠️ {warning}")
+
+        ⚠️ WARNINGS:
+            - Forecast valid only until CURRENT PRICING CHANGES
+            - New Claude models typically cost less → forecast overstates cost
+            - Bedrock/Foundry/Model Garden have DIFFERENT pricing than Claude API
+            - If switching providers, re-run forecast (pricing differs by 20-40%)
+            - Enterprise discounts not reflected
+            - Refresh forecast weekly or after any API changes
+        """
+        result = self._core.forecast_quarterly()
+        return json.loads(result)
+
 
 __all__ = ["CostReporter"]

@@ -116,4 +116,12 @@ impl CostReporter {
         let comparison = analyzer.compare_model_costs(tokens_input, tokens_output);
         Ok(serde_json::to_value(comparison)?)
     }
+
+    /// Forecast quarterly spending with pricing volatility disclaimer
+    /// All forecasts include prominent warning about pricing changes
+    pub async fn forecast_quarterly(&self) -> anyhow::Result<serde_json::Value> {
+        let operations = self.storage.get_operations_since_hours(168).await?; // 1 week of data
+        let analyzer = CostAnalyzer::new();
+        Ok(analyzer.forecast_quarterly(&operations)?)
+    }
 }

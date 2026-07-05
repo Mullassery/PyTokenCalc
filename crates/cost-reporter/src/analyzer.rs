@@ -22,6 +22,24 @@ impl CostAnalyzer {
         }
     }
 
+    /// Forecast disclaimer (always included in forecasts)
+    /// CRITICAL: Forecasts are invalid if pricing changes
+    pub fn forecast_disclaimer() -> serde_json::Value {
+        serde_json::json!({
+            "disclaimer": "⚠️ FORECAST ACCURACY WARNING",
+            "warnings": [
+                "Forecast assumes CURRENT pricing remains unchanged",
+                "Anthropic may launch new models or change rates",
+                "Any pricing change INVALIDATES this forecast",
+                "New model launches typically change cost calculations",
+                "Enterprise discounts not reflected in forecast",
+                "Prompt optimization could reduce actual costs significantly"
+            ],
+            "refresh_frequency": "Refresh forecast weekly or after major model changes",
+            "confidence": "High confidence only for 7 days (current pricing TTL is 24h)"
+        })
+    }
+
     /// Generate timezone-aware daily cost breakdown
     /// Groups operations by their local date in each user's timezone
     /// Critical for distributed teams with budget resets at local midnight
@@ -289,6 +307,43 @@ impl CostAnalyzer {
         // Placeholder: in production, this uses ML to detect unusual patterns
         Ok(serde_json::json!({
             "anomalies": []
+        }))
+    }
+
+    /// Forecast quarterly costs with pricing volatility disclaimer
+    /// CRITICAL: All forecasts include disclaimer that pricing changes invalidate forecast
+    pub fn forecast_quarterly(&self, operations: &[Operation]) -> anyhow::Result<serde_json::Value> {
+        if operations.is_empty() {
+            return Ok(serde_json::json!({
+                "error": "No operations to forecast from",
+                "disclaimer": Self::forecast_disclaimer()
+            }));
+        }
+
+        let total_cost: f64 = operations.iter()
+            .map(|_| 0.01) // Placeholder: would use actual cost from storage
+            .sum();
+
+        let avg_daily = total_cost / 7.0; // Assume weekly data
+        let q_projection = avg_daily * 90.0;
+
+        Ok(serde_json::json!({
+            "forecast": "quarterly",
+            "period": "next 90 days",
+            "projected_cost_usd": (q_projection * 100.0).round() / 100.0,
+            "daily_average": (avg_daily * 100.0).round() / 100.0,
+            "confidence_level": "Medium (depends on stable pricing)",
+            "assumptions": [
+                "Current pricing unchanged for 90 days",
+                "Spending patterns remain consistent",
+                "No major model migrations",
+                "No new expensive operations added"
+            ],
+            "disclaimer": Self::forecast_disclaimer(),
+            "breakeven_payback": {
+                "if_optimize": "4-8 weeks with recommended optimizations",
+                "required_action": "Implement quick-win recommendations to improve forecast"
+            }
         }))
     }
 

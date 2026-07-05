@@ -183,6 +183,16 @@ impl PyCostReporter {
         }).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
         Ok(serde_json::to_string(&result).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?)
     }
+
+    /// Forecast quarterly spending with pricing disclaimer
+    pub fn forecast_quarterly(&self) -> PyResult<String> {
+        let rt = tokio::runtime::Handle::current();
+        let result = rt.block_on(async {
+            let reporter = self.reporter.lock().await;
+            reporter.forecast_quarterly().await
+        }).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
+        Ok(serde_json::to_string(&result).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?)
+    }
 }
 
 /// Initialize Python module
