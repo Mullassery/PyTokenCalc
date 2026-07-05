@@ -19,9 +19,9 @@ PyCostAudit reveals what no other tool measures: file format multipliers (36x va
 You're spending more on Claude than you realize. Not because Claude is expensive—but because you don't see the hidden multipliers:
 
 ```
-❌ PDF from URL costs 3.6x more than from disk
-❌ Browser operations cost 55x more than file reads  
-❌ Busy hour costs 30% MORE than off-peak (same operation)
+❌ PDF from URL costs 3.6x more than pasted CSV
+❌ Browser operations cost 55x more than API calls  
+❌ Peak hour costs 30% MORE than off-peak (same operation)
 ❌ Bedrock EU region costs 15% more than US
 ❌ MCP calls have 10x-100x overhead (hidden!)
 ❌ Pro plan users pay 200% more than Max for the same work
@@ -37,7 +37,7 @@ You're spending more on Claude than you realize. Not because Claude is expensive
 
 | Dimension | Tracked | Multiplier | Why It Matters |
 |-----------|---------|-----------|---|
-| **File Format** | CSV vs PDF vs URL | 3.6x | PDF via URL bleeds money |
+| **File Format** | CSV pasted vs PDF URL | 1.0x → 3.6x | PDF via URL costs 3.6x baseline |
 | **Operation Type** | Browser vs API vs DB | 55x | Browser scraping kills budgets |
 | **Peak/Off-Peak** | Hour of day | 1.3x / 0.7x | Batch jobs at 2 AM, save 30% |
 | **Cloud Region** | us-east-1 vs eu-west | 1.15x | Regional premiums add up |
@@ -56,10 +56,10 @@ You're spending more on Claude than you realize. Not because Claude is expensive
 ## Real Example: Find $420/Month Hidden
 
 ```
-Before PyCostReporter:
+Before:
 "We spend $1,200/month on Claude. Budget doesn't justify it."
 
-After PyCostReporter breakdown:
+After PyCostAudit breakdown:
 ├─ File reads via URL:  $600 (50%) ← Costs 3.6x disk
 ├─ Browser operations:  $350 (29%) ← Costs 55x baseline
 ├─ Off-peak MCP calls:  $150 (13%) ← Could run at 2 AM (save 30%)
@@ -87,7 +87,7 @@ import os
 auditor = PyCostAudit(db_path="~/.pycostaudit/costs.db")
 
 # Example 1: Track GitHub commit (12x cost multiplier - BIGGEST COST!)
-operation = cost.track_operation(
+cost = auditor.track_operation(
     operation_type="github_commit",
     tokens_input=8200,               # Analyzing diffs, tree walk
     tokens_output=450,
@@ -97,7 +97,7 @@ operation = cost.track_operation(
 print(f"GitHub commit cost: ${cost['cost']:.4f} {cost['currency']}")
 
 # Example 2: Track GitHub read (4x cost multiplier)
-cost = reporter.track_operation(
+cost = auditor.track_operation(
     operation_type="github_read",
     tokens_input=2100,               # Reading PR/issue
     tokens_output=200,
@@ -107,7 +107,7 @@ cost = reporter.track_operation(
 print(f"GitHub read cost: ${cost['cost']:.4f} {cost['currency']}")
 
 # Example 3: Track markdown updates (3x cost multiplier)
-operation = cost.track_operation(
+cost = auditor.track_operation(
     operation_type="markdown_operation",
     tokens_input=1500,               # README/CHANGELOG updates
     tokens_output=800,
@@ -117,7 +117,7 @@ operation = cost.track_operation(
 print(f"Markdown operation cost: ${cost['cost']:.4f} {cost['currency']}")
 
 # Example 4: Track file read (3.6x multiplier for PDF via URL)
-operation = cost.track_operation(
+cost = auditor.track_operation(
     operation_type="file_read",
     tokens_input=450,
     tokens_output=120,
@@ -128,18 +128,18 @@ operation = cost.track_operation(
     billing_plan="max",
     pricing_tier="off_peak"
 )
-print(f"File read cost: ${operation['cost']:.4f} {operation['currency']}")
+print(f"File read cost: ${cost['cost']:.4f} {cost['currency']}")
 
 # Get today's breakdown
-breakdown = cost.analyze_daily()
+breakdown = auditor.analyze_daily()
 print(f"Today: ${breakdown['total_cost']:.2f}")
 
 # Find cost by plan
-plans = cost.compare_billing_plans()
+plans = auditor.compare_billing_plans()
 print(f"Recommendation: Switch to {plans['recommended_plan']} (save ${plans['savings']:.2f}/month)")
 
 # Model comparison
-models = cost.compare_models(tokens_input=1000, tokens_output=500)
+models = auditor.compare_models(tokens_input=1000, tokens_output=500)
 for model in models['comparisons']:
     print(f"{model['model']}: ${model['cost_usd']:.4f}")
 ```
@@ -312,17 +312,17 @@ recs = reporter.get_recommendations()
 
 ### Quick Start (Claude Code Skill)
 
-PyCostReporter integrates natively with Claude Code. Enable cost tracking in your Claude Code sessions:
+PyCostAudit integrates natively with Claude Code. Enable cost tracking in your Claude Code sessions:
 
 ```python
 # In your Claude Code project
-from pycostreporter import PyCostReporter
+from pycost_audit import PyCostAudit
 
 # Initialize once
-cost_tracker = PyCostReporter(db_path="~/.pycostreporter/costs.db")
+auditor = PyCostAudit(db_path="~/.pycostaudit/costs.db")
 
 # Track any operation
-cost = tracker.track_operation(
+cost = auditor.track_operation(
     operation_type="file_read",
     tokens_input=450,
     tokens_output=120,
@@ -331,11 +331,11 @@ cost = tracker.track_operation(
 )
 
 # Get daily analysis
-breakdown = tracker.analyze_daily()
+breakdown = auditor.analyze_daily()
 print(f"Today's cost: ${breakdown['total_cost']:.2f}")
 
 # Get optimization recommendations
-recommendations = tracker.get_recommendations()
+recommendations = auditor.get_recommendations()
 for rec in recommendations:
     print(f"{rec['action']}: Save {rec['savings']}")
 ```
@@ -356,10 +356,10 @@ Add this to your `.claude/claude-hooks.json` to auto-track costs:
 
 ```bash
 # Install in your Claude Code project
-pip install pycostreporter
+pip install pycostaudit
 
 # Set up database path
-export PYCOSTREPORTER_DB=~/.pycostreporter/costs.db
+export PYCOSTAUDIT_DB=~/.pycostaudit/costs.db
 ```
 
 ---

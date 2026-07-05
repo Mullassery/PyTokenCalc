@@ -13,6 +13,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
 chrono = { version = "0.4", features = ["serde"] }
+once_cell = { workspace = true }
 cost-reporter = { path = "../crates/cost-reporter" }
 
 [lib]

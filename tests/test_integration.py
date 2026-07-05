@@ -1,5 +1,5 @@
 """
-Integration tests for CostReporter MVP.
+Integration tests for PyCostAudit MVP.
 
 Tests the complete flow: operation tracking → cost calculation → analysis.
 """
@@ -7,14 +7,14 @@ Tests the complete flow: operation tracking → cost calculation → analysis.
 import tempfile
 import json
 from pathlib import Path
-from pycost_reporter import CostReporter
+from pycostaudit import PyCostAudit
 
 
 def test_basic_cost_tracking():
     """Test: Track a simple operation and calculate cost."""
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "costs.db"
-        reporter = CostReporter(str(db_path))
+        reporter = PyCostAudit(str(db_path))
 
         # Track an operation
         cost = reporter.track_operation(
@@ -24,7 +24,7 @@ def test_basic_cost_tracking():
             model="claude-3-5-haiku",
         )
 
-        assert cost["cost_usd"] > 0
+        assert cost["cost"] > 0
         assert cost["multiplier"] == 1.0  # No multiplier for API call
         assert cost["tokens_actual"] == 1500
 
@@ -33,7 +33,7 @@ def test_file_format_multipliers():
     """Test: File source multipliers (36x variance)."""
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "costs.db"
-        reporter = CostReporter(str(db_path))
+        reporter = PyCostAudit(str(db_path))
 
         # CSV local (baseline)
         csv_cost = reporter.track_operation(
@@ -63,7 +63,7 @@ def test_operation_type_variance():
     """Test: Operation type multipliers (55x for browser ops)."""
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "costs.db"
-        reporter = CostReporter(str(db_path))
+        reporter = PyCostAudit(str(db_path))
 
         # File read (baseline)
         file_cost = reporter.track_operation(
@@ -91,7 +91,7 @@ def test_session_tracking():
     """Test: Session grouping and tagging."""
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "costs.db"
-        reporter = CostReporter(str(db_path))
+        reporter = PyCostAudit(str(db_path))
 
         # Start session
         session_id = reporter.start_session("feature/auth")
@@ -128,7 +128,7 @@ def test_instruction_context():
     """Test: Instruction context adds overhead."""
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "costs.db"
-        reporter = CostReporter(str(db_path))
+        reporter = PyCostAudit(str(db_path))
 
         # Simple operation
         simple = reporter.track_operation(
@@ -155,7 +155,7 @@ def test_mcp_tracking():
     """Test: MCP invocation tracking."""
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "costs.db"
-        reporter = CostReporter(str(db_path))
+        reporter = PyCostAudit(str(db_path))
 
         # Track MCP calls
         reporter.track_operation(
@@ -192,7 +192,7 @@ def test_user_attribution():
     """Test: Per-user cost tracking for teams."""
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "costs.db"
-        reporter = CostReporter(str(db_path))
+        reporter = PyCostAudit(str(db_path))
 
         # Alice's operations
         reporter.track_operation(
@@ -230,7 +230,7 @@ def test_analysis_output_format():
     """Test: Analysis outputs are valid JSON with expected structure."""
     with tempfile.TemporaryDirectory() as tmpdir:
         db_path = Path(tmpdir) / "costs.db"
-        reporter = CostReporter(str(db_path))
+        reporter = PyCostAudit(str(db_path))
 
         # Track some operations
         reporter.track_operation(

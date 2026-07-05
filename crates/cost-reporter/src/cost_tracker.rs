@@ -180,7 +180,7 @@ mod tests {
         // 1000 tokens input = $0.0008
         // 500 tokens output = $0.002
         // Total = $0.0028
-        assert!(cost.cost_usd > 0.0);
+        assert!(cost.cost > 0.0);
         assert_eq!(cost.multiplier, 1.0); // No multiplier for API call
     }
 

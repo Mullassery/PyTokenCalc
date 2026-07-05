@@ -1,5 +1,5 @@
 """
-CostReporter: Real-time LLM cost tracking and optimization
+PyCostAudit: Real-time LLM cost tracking and optimization
 
 A MIT OSS tool that tracks:
 - File format cost multipliers (36x variance: CSV vs PDF URL)
@@ -11,9 +11,9 @@ A MIT OSS tool that tracks:
 - Session-based cost grouping (root cause analysis)
 
 Usage:
-    from pycost_reporter import CostReporter
+    from pycost_audit import PyCostAudit
 
-    reporter = CostReporter(db_path="~/.cost-reporter/costs.db")
+    reporter = PyCostAudit(db_path="~/.pycostaudit/costs.db")
 
     # Track an operation
     session_id = reporter.start_session("debug-auth")
@@ -32,11 +32,11 @@ Usage:
     print(f"Today's spend: ${breakdown['total_cost_usd']}")
 """
 
-from ._core import PyCostReporter
+from ._core import PyCostAudit as _PyCostAuditCore
 import json
 
 
-class CostReporter:
+class PyCostAudit:
     """
     Main API for cost tracking and analysis.
 
@@ -54,7 +54,7 @@ class CostReporter:
         db_path = os.path.expanduser(db_path)
         os.makedirs(os.path.dirname(db_path), exist_ok=True)
 
-        self._core = PyCostReporter(db_path)
+        self._core = _PyCostAuditCore(db_path)
         self._current_session = None
 
     def start_session(self, name: str = None) -> str:

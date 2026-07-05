@@ -1,0 +1,14 @@
+/Users/georgimullassery/CostReporter/target/release/deps/pyo3_build_config-4849586ee699b7ed.d: /Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.22.6/src/lib.rs /Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.22.6/src/errors.rs /Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.22.6/src/impl_.rs /Users/georgimullassery/CostReporter/target/release/build/pyo3-build-config-81c2d2ad602e347d/out/pyo3-build-config-file.txt /Users/georgimullassery/CostReporter/target/release/build/pyo3-build-config-81c2d2ad602e347d/out/pyo3-build-config.txt
+
+/Users/georgimullassery/CostReporter/target/release/deps/libpyo3_build_config-4849586ee699b7ed.rlib: /Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.22.6/src/lib.rs /Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.22.6/src/errors.rs /Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.22.6/src/impl_.rs /Users/georgimullassery/CostReporter/target/release/build/pyo3-build-config-81c2d2ad602e347d/out/pyo3-build-config-file.txt /Users/georgimullassery/CostReporter/target/release/build/pyo3-build-config-81c2d2ad602e347d/out/pyo3-build-config.txt
+
+/Users/georgimullassery/CostReporter/target/release/deps/libpyo3_build_config-4849586ee699b7ed.rmeta: /Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.22.6/src/lib.rs /Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.22.6/src/errors.rs /Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.22.6/src/impl_.rs /Users/georgimullassery/CostReporter/target/release/build/pyo3-build-config-81c2d2ad602e347d/out/pyo3-build-config-file.txt /Users/georgimullassery/CostReporter/target/release/build/pyo3-build-config-81c2d2ad602e347d/out/pyo3-build-config.txt
+
+/Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.22.6/src/lib.rs:
+/Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.22.6/src/errors.rs:
+/Users/georgimullassery/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/pyo3-build-config-0.22.6/src/impl_.rs:
+/Users/georgimullassery/CostReporter/target/release/build/pyo3-build-config-81c2d2ad602e347d/out/pyo3-build-config-file.txt:
+/Users/georgimullassery/CostReporter/target/release/build/pyo3-build-config-81c2d2ad602e347d/out/pyo3-build-config.txt:
+
+# env-dep:CARGO_PKG_VERSION=0.22.6
+# env-dep:OUT_DIR=/Users/georgimullassery/CostReporter/target/release/build/pyo3-build-config-81c2d2ad602e347d/out
