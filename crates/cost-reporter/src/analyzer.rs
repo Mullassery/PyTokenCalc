@@ -490,6 +490,7 @@ impl CostAnalyzer {
             model: "claude-3-5-sonnet".to_string(),
             input_cost_per_1m: 3.00,
             output_cost_per_1m: 15.00,
+            currency: crate::types::Currency::USD,
         };
         let baseline_cost = baseline.calculate_cost(tokens_input, tokens_output);
 
@@ -500,6 +501,7 @@ impl CostAnalyzer {
                     model: name.to_string(),
                     input_cost_per_1m: *input_rate,
                     output_cost_per_1m: *output_rate,
+                    currency: crate::types::Currency::USD,
                 };
                 let cost = model_pricing.calculate_cost(tokens_input, tokens_output);
                 let diff = cost - baseline_cost;

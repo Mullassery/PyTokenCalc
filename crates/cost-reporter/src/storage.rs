@@ -51,6 +51,7 @@ impl StorageBackend {
                 timestamp TEXT NOT NULL,
                 user_name TEXT,
                 cost_usd REAL NOT NULL,
+                currency TEXT NOT NULL DEFAULT 'USD',
                 tokens_actual INTEGER NOT NULL,
                 multiplier REAL NOT NULL,
                 tags TEXT
@@ -103,8 +104,8 @@ impl StorageBackend {
             INSERT INTO operations (
                 id, session_id, operation_type, tokens_input, tokens_output,
                 model, file_source, mcp_name, timestamp, user_name,
-                cost_usd, tokens_actual, multiplier, tags
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                cost_usd, currency, tokens_actual, multiplier, tags
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
         )
         .bind(&operation.id)
@@ -117,7 +118,8 @@ impl StorageBackend {
         .bind(&operation.mcp_name)
         .bind(operation.timestamp.to_rfc3339())
         .bind(&operation.user)
-        .bind(cost.cost_usd)
+        .bind(cost.cost)
+        .bind(cost.currency.code())
         .bind(cost.tokens_actual)
         .bind(cost.multiplier)
         .bind(tags)

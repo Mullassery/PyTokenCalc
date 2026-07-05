@@ -46,11 +46,12 @@ impl CostTracker {
 
         Ok(CostData {
             operation_id: operation.id.clone(),
-            cost_usd: actual_cost,
+            cost: actual_cost,
+            currency: pricing.currency,
             tokens_actual: actual_tokens,
             multiplier,
-            input_cost_usd: input_cost,
-            output_cost_usd: output_cost,
+            input_cost: input_cost,
+            output_cost: output_cost,
             pricing_timestamp: chrono::Utc::now(),
             pricing_source: "fallback".to_string(),  // TODO: track actual source from pricing_service
         })
@@ -58,26 +59,32 @@ impl CostTracker {
 
     /// Get cached model pricing (fallback if service unreachable)
     fn get_cached_model_pricing(&self, model: &str) -> ModelPricing {
+        use crate::types::Currency;
+
         match model {
             "claude-3-5-sonnet" => ModelPricing {
                 model: "claude-3-5-sonnet".to_string(),
                 input_cost_per_1m: 3.00,
                 output_cost_per_1m: 15.00,
+                currency: Currency::USD,
             },
             "claude-3-5-haiku" => ModelPricing {
                 model: "claude-3-5-haiku".to_string(),
                 input_cost_per_1m: 0.80,
                 output_cost_per_1m: 4.00,
+                currency: Currency::USD,
             },
             "claude-3-opus" => ModelPricing {
                 model: "claude-3-opus".to_string(),
                 input_cost_per_1m: 15.00,
                 output_cost_per_1m: 75.00,
+                currency: Currency::USD,
             },
             _ => ModelPricing {
                 model: model.to_string(),
                 input_cost_per_1m: 3.00,
                 output_cost_per_1m: 15.00,
+                currency: Currency::USD,
             },
         }
     }

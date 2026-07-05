@@ -18,6 +18,70 @@ pub enum BillingPlan {
     Enterprise,
 }
 
+/// Currency code (ISO 4217)
+/// CRITICAL: Never convert currencies - FX risk is real
+/// Report in original provider currency, not user's local currency
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Currency {
+    /// US Dollar (Anthropic, AWS, GCP)
+    USD,
+    /// Euro (Azure Europe, some AWS regions)
+    EUR,
+    /// British Pound (Azure UK)
+    GBP,
+    /// Australian Dollar (Azure, AWS Australia)
+    AUD,
+    /// Canadian Dollar (AWS Canada)
+    CAD,
+    /// Japanese Yen (AWS, Azure Asia)
+    JPY,
+    /// Singapore Dollar (GCP, AWS Singapore)
+    SGD,
+    /// Indian Rupee (AWS India)
+    INR,
+    /// Chinese Yuan (GCP China)
+    CNY,
+}
+
+impl Currency {
+    pub fn symbol(&self) -> &'static str {
+        match self {
+            Currency::USD => "$",
+            Currency::EUR => "€",
+            Currency::GBP => "£",
+            Currency::AUD => "A$",
+            Currency::CAD => "C$",
+            Currency::JPY => "¥",
+            Currency::SGD => "S$",
+            Currency::INR => "₹",
+            Currency::CNY => "¥",
+        }
+    }
+
+    pub fn code(&self) -> &'static str {
+        match self {
+            Currency::USD => "USD",
+            Currency::EUR => "EUR",
+            Currency::GBP => "GBP",
+            Currency::AUD => "AUD",
+            Currency::CAD => "CAD",
+            Currency::JPY => "JPY",
+            Currency::SGD => "SGD",
+            Currency::INR => "INR",
+            Currency::CNY => "CNY",
+        }
+    }
+
+    pub fn decimal_places(&self) -> u32 {
+        match self {
+            // 0 decimal places
+            Currency::JPY | Currency::CNY | Currency::INR => 0,
+            // 2 decimal places (most currencies)
+            _ => 2,
+        }
+    }
+}
+
 /// Data source types for MCP operations (database reads, S3 access, etc)
 /// CRITICAL: These are massive token consumers - 100x-1000x more than simple file reads
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -401,15 +465,18 @@ impl DataSource {
 pub struct CostData {
     /// Operation ID
     pub operation_id: String,
-    /// Total cost in USD
-    pub cost_usd: f64,
+    /// Total cost in original provider currency (NOT converted)
+    pub cost: f64,
+    /// Currency of cost (USD, EUR, GBP, etc.)
+    /// CRITICAL: Never convert - always report in original currency
+    pub currency: Currency,
     /// Actual tokens (after multiplier)
     pub tokens_actual: u32,
     /// Cost multiplier applied (file format or operation type)
     pub multiplier: f64,
-    /// Breakdown: input cost + output cost
-    pub input_cost_usd: f64,
-    pub output_cost_usd: f64,
+    /// Breakdown: input cost + output cost (in original currency)
+    pub input_cost: f64,
+    pub output_cost: f64,
     /// When pricing was valid (critical for historical accuracy)
     pub pricing_timestamp: chrono::DateTime<chrono::Utc>,
     /// Source of pricing: "api", "cache", "fallback"
@@ -479,6 +546,9 @@ pub struct ModelPricing {
     pub input_cost_per_1m: f64,
     /// Output cost per 1M tokens (usually higher)
     pub output_cost_per_1m: f64,
+    /// Currency of this pricing (USD, EUR, GBP, etc.)
+    /// CRITICAL: Never convert - report in original currency
+    pub currency: Currency,
 }
 
 /// Pricing metadata for transparency

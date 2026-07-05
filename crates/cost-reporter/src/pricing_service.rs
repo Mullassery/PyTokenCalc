@@ -190,75 +190,88 @@ impl PricingService {
 
     /// Fallback pricing by provider (keep updated with real rates)
     /// NOTE: Cloud providers have regional pricing variance (10-30%)
+    /// CRITICAL: Each provider uses its native currency (no conversion)
     fn fallback_pricing(model: &str, provider: PricingProvider) -> ModelPricing {
+        use crate::types::Currency;
+
         match (provider, model) {
-            // Claude API (Anthropic direct) - no regional variance
+            // Claude API (Anthropic direct) - USD only, no regional variance
             (PricingProvider::ClaudeApi, "claude-3-5-sonnet") => ModelPricing {
                 model: "claude-3-5-sonnet".to_string(),
                 input_cost_per_1m: 3.00,
                 output_cost_per_1m: 15.00,
+                currency: Currency::USD,
             },
             (PricingProvider::ClaudeApi, "claude-3-5-haiku") => ModelPricing {
                 model: "claude-3-5-haiku".to_string(),
                 input_cost_per_1m: 0.80,
                 output_cost_per_1m: 4.00,
+                currency: Currency::USD,
             },
             (PricingProvider::ClaudeApi, "fable") => ModelPricing {
                 model: "fable".to_string(),
                 input_cost_per_1m: 0.60,
                 output_cost_per_1m: 2.40,
+                currency: Currency::USD,
             },
 
-            // AWS Bedrock (20-30% cheaper than Claude API)
-            // NOTE: us-east-1, us-west-2 = standard
-            // eu-west-1 = +15% (European premium)
-            // ap-northeast-1 = +10% (Asia premium)
+            // AWS Bedrock - USD (US regions) or local currency (international)
+            // NOTE: us-east-1, us-west-2 = USD, base pricing
+            // eu-west-1 = EUR, +15% premium
+            // ap-northeast-1 = JPY, +10% premium
             (PricingProvider::AwsBedrock, "claude-3-5-sonnet") => ModelPricing {
                 model: "claude-3-5-sonnet".to_string(),
-                input_cost_per_1m: 2.10,  // us-east-1/us-west-2 base
+                input_cost_per_1m: 2.10,  // USD for us-east-1
                 output_cost_per_1m: 10.50,
+                currency: Currency::USD,
             },
             (PricingProvider::AwsBedrock, "claude-3-5-haiku") => ModelPricing {
                 model: "claude-3-5-haiku".to_string(),
                 input_cost_per_1m: 0.56,
                 output_cost_per_1m: 2.80,
+                currency: Currency::USD,
             },
 
-            // Azure Foundry (varies by region, ~15-20% discount base)
-            // NOTE: eastus = standard
-            // westeurope = +20% premium
-            // southeastasia = +15% premium
+            // Azure Foundry - region-specific currency
+            // NOTE: eastus = USD, base pricing
+            // westeurope = EUR, +20% premium
+            // southeastasia = SGD, +15% premium
             (PricingProvider::AzureFoundry, "claude-3-5-sonnet") => ModelPricing {
                 model: "claude-3-5-sonnet".to_string(),
-                input_cost_per_1m: 2.55,  // eastus base
+                input_cost_per_1m: 2.55,  // USD for eastus
                 output_cost_per_1m: 12.75,
+                currency: Currency::USD,
             },
             (PricingProvider::AzureFoundry, "claude-3-5-haiku") => ModelPricing {
                 model: "claude-3-5-haiku".to_string(),
                 input_cost_per_1m: 0.68,
                 output_cost_per_1m: 3.40,
+                currency: Currency::USD,
             },
 
-            // GCP Model Garden (up to 50% discount, but regional variance)
-            // NOTE: us-central1 = standard
-            // europe-west1 = +18% premium
-            // asia-east1 = +20% premium
+            // GCP Model Garden - region-specific currency
+            // NOTE: us-central1 = USD, base pricing
+            // europe-west1 = EUR, +18% premium
+            // asia-east1 = SGD or JPY, +20% premium
             (PricingProvider::GcpModelGarden, "claude-3-5-sonnet") => ModelPricing {
                 model: "claude-3-5-sonnet".to_string(),
-                input_cost_per_1m: 1.80,  // us-central1 base
+                input_cost_per_1m: 1.80,  // USD for us-central1
                 output_cost_per_1m: 9.00,
+                currency: Currency::USD,
             },
             (PricingProvider::GcpModelGarden, "claude-3-5-haiku") => ModelPricing {
                 model: "claude-3-5-haiku".to_string(),
                 input_cost_per_1m: 0.48,
                 output_cost_per_1m: 2.40,
+                currency: Currency::USD,
             },
 
-            // Fallback: use Claude API pricing as default
+            // Fallback: use Claude API pricing as default (USD)
             _ => ModelPricing {
                 model: model.to_string(),
                 input_cost_per_1m: 3.00,
                 output_cost_per_1m: 15.00,
+                currency: Currency::USD,
             },
         }
     }
