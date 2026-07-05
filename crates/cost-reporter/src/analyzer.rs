@@ -1,6 +1,6 @@
 //! Cost analysis and recommendations generation
 
-use crate::types::Operation;
+use crate::types::{Operation, ModelPricing, ModelComparison, ModelCostDiff};
 use chrono_tz::Tz;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -290,6 +290,54 @@ impl CostAnalyzer {
         Ok(serde_json::json!({
             "anomalies": []
         }))
+    }
+
+    /// Compare costs across models for informed model selection
+    /// CRITICAL: Shows users cost difference BEFORE switching models
+    pub fn compare_model_costs(&self, tokens_input: u32, tokens_output: u32) -> ModelComparison {
+        let models = vec![
+            ("claude-3-5-sonnet", 3.00, 15.00),
+            ("claude-3-5-haiku", 0.80, 4.00),
+            ("claude-3-opus", 15.00, 75.00),
+            ("fable", 0.60, 2.40),
+            ("fable-5", 0.50, 2.00),
+        ];
+
+        let baseline = ModelPricing {
+            model: "claude-3-5-sonnet".to_string(),
+            input_cost_per_1m: 3.00,
+            output_cost_per_1m: 15.00,
+        };
+        let baseline_cost = baseline.calculate_cost(tokens_input, tokens_output);
+
+        let comparisons = models
+            .iter()
+            .map(|(name, input_rate, output_rate)| {
+                let model_pricing = ModelPricing {
+                    model: name.to_string(),
+                    input_cost_per_1m: *input_rate,
+                    output_cost_per_1m: *output_rate,
+                };
+                let cost = model_pricing.calculate_cost(tokens_input, tokens_output);
+                let diff = cost - baseline_cost;
+                let ratio = cost / baseline_cost;
+                let savings = ((baseline_cost - cost) / baseline_cost) * 100.0;
+
+                ModelCostDiff {
+                    model: name.to_string(),
+                    cost_usd: cost,
+                    cost_diff_usd: diff,
+                    cost_ratio: ratio,
+                    savings_percentage: savings,
+                }
+            })
+            .collect();
+
+        ModelComparison {
+            baseline_model: baseline.model,
+            baseline_cost_usd: baseline_cost,
+            comparisons,
+        }
     }
 
     /// Estimate cost for an operation (simplified, actual cost in storage)

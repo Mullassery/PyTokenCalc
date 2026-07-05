@@ -284,5 +284,46 @@ class CostReporter:
         result = self._core.detect_anomalies()
         return json.loads(result)
 
+    def compare_models(self, tokens_input: int, tokens_output: int) -> dict:
+        """
+        Compare costs across Claude models for informed model selection.
+
+        ⚠️ CRITICAL: API pricing changes as new models launch and rates update.
+        This comparison uses current cached pricing. Always check Anthropic's pricing page
+        for real-time rates before final cost decisions.
+
+        Args:
+            tokens_input: Sample input token count
+            tokens_output: Sample output token count
+
+        Returns:
+            Model comparison with:
+            - baseline_model: Reference model (Claude 3.5 Sonnet)
+            - baseline_cost_usd: Baseline cost
+            - comparisons: Array of model costs with ratios and savings %
+
+        Example:
+            comparison = reporter.compare_models(tokens_input=1000, tokens_output=500)
+            print(f"Baseline (Sonnet): ${comparison['baseline_cost_usd']:.4f}")
+            for model in comparison['comparisons']:
+                savings = model['savings_percentage']
+                if savings > 0:
+                    print(f"  {model['model']}: Save {savings:.1f}% → ${model['cost_usd']:.4f}")
+                else:
+                    print(f"  {model['model']}: Cost {abs(savings):.1f}% more → ${model['cost_usd']:.4f}")
+
+        ⚠️ DISCLAIMER:
+            - Pricing may have changed since last update
+            - New models (Fable, Opus) pricing subject to change
+            - Enterprise customers have negotiated rates (not shown here)
+            - Token counting methodology may differ from actual Claude API
+            - Use this for estimation only - verify with billing dashboard
+        """
+        result = self._core.compare_models(
+            tokens_input=tokens_input,
+            tokens_output=tokens_output
+        )
+        return json.loads(result)
+
 
 __all__ = ["CostReporter"]

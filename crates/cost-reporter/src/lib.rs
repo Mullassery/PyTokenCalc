@@ -16,12 +16,14 @@ pub mod operation_profiler;
 pub mod mcp_profiler;
 pub mod storage;
 pub mod analyzer;
+pub mod pricing_service;
 
 pub use types::{Operation, OperationType, FileSource, Session, CostData};
 pub use cost_tracker::CostTracker;
 pub use session::SessionManager;
 pub use storage::StorageBackend;
 pub use analyzer::CostAnalyzer;
+pub use pricing_service::PricingService;
 
 #[derive(Debug, Clone)]
 pub struct CostReporter {
@@ -104,5 +106,14 @@ impl CostReporter {
         let operations = self.storage.get_operations_since_hours(168).await?; // 1 week
         let analyzer = CostAnalyzer::new();
         Ok(analyzer.detect_anomalies(&operations)?)
+    }
+
+    /// Compare model costs for informed model selection
+    /// Returns cost differences across all available models
+    /// CRITICAL: Users see cost impact BEFORE switching models
+    pub async fn compare_models(&self, tokens_input: u32, tokens_output: u32) -> anyhow::Result<serde_json::Value> {
+        let analyzer = CostAnalyzer::new();
+        let comparison = analyzer.compare_model_costs(tokens_input, tokens_output);
+        Ok(serde_json::to_value(comparison)?)
     }
 }

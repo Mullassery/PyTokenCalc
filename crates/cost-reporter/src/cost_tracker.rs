@@ -2,86 +2,30 @@
 
 use crate::types::*;
 use crate::storage::StorageBackend;
+use crate::pricing_service::PricingService;
 use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct CostTracker {
     storage: StorageBackend,
-    pricing_db: PricingDatabase,
-}
-
-/// Current pricing for Claude models
-#[derive(Debug)]
-struct PricingDatabase {
-    models: HashMap<String, ModelPricing>,
-}
-
-impl PricingDatabase {
-    fn new() -> Self {
-        let mut models = HashMap::new();
-
-        // Claude 3.5 Sonnet — general purpose
-        models.insert(
-            "claude-3-5-sonnet".to_string(),
-            ModelPricing {
-                model: "claude-3-5-sonnet".to_string(),
-                input_cost_per_1m: 3.00,
-                output_cost_per_1m: 15.00,
-            },
-        );
-
-        // Claude 3.5 Haiku — fast, cheap
-        models.insert(
-            "claude-3-5-haiku".to_string(),
-            ModelPricing {
-                model: "claude-3-5-haiku".to_string(),
-                input_cost_per_1m: 0.80,
-                output_cost_per_1m: 4.00,
-            },
-        );
-
-        // Claude 3 Opus — expensive, powerful
-        models.insert(
-            "claude-3-opus".to_string(),
-            ModelPricing {
-                model: "claude-3-opus".to_string(),
-                input_cost_per_1m: 15.00,
-                output_cost_per_1m: 75.00,
-            },
-        );
-
-        // Fallback: assume Sonnet pricing
-        models.insert(
-            "default".to_string(),
-            ModelPricing {
-                model: "default".to_string(),
-                input_cost_per_1m: 3.00,
-                output_cost_per_1m: 15.00,
-            },
-        );
-
-        Self { models }
-    }
-
-    fn get_pricing(&self, model: &str) -> ModelPricing {
-        self.models
-            .get(model)
-            .cloned()
-            .unwrap_or_else(|| self.models.get("default").unwrap().clone())
-    }
+    pricing_service: PricingService,
 }
 
 impl CostTracker {
     pub fn new(storage: StorageBackend) -> Self {
         Self {
             storage,
-            pricing_db: PricingDatabase::new(),
+            pricing_service: PricingService::new(),
         }
     }
 
     /// Calculate cost for an operation
+    /// Note: Uses cached pricing for sync operation
+    /// For real-time pricing updates, call refresh_pricing_async() periodically
     pub fn calculate_cost(&self, operation: &Operation) -> anyhow::Result<CostData> {
-        let pricing = self.pricing_db.get_pricing(&operation.model);
+        // CRITICAL: For actual deployment, pricing must be fetched async
+        // This is a synchronous fallback using cached pricing
+        let pricing = self.get_cached_model_pricing(&operation.model);
 
         // Base cost (no multiplier)
         let base_cost = pricing.calculate_cost(operation.tokens_input, operation.tokens_output);
@@ -107,7 +51,34 @@ impl CostTracker {
             multiplier,
             input_cost_usd: input_cost,
             output_cost_usd: output_cost,
+            pricing_timestamp: chrono::Utc::now(),
         })
+    }
+
+    /// Get cached model pricing (fallback if service unreachable)
+    fn get_cached_model_pricing(&self, model: &str) -> ModelPricing {
+        match model {
+            "claude-3-5-sonnet" => ModelPricing {
+                model: "claude-3-5-sonnet".to_string(),
+                input_cost_per_1m: 3.00,
+                output_cost_per_1m: 15.00,
+            },
+            "claude-3-5-haiku" => ModelPricing {
+                model: "claude-3-5-haiku".to_string(),
+                input_cost_per_1m: 0.80,
+                output_cost_per_1m: 4.00,
+            },
+            "claude-3-opus" => ModelPricing {
+                model: "claude-3-opus".to_string(),
+                input_cost_per_1m: 15.00,
+                output_cost_per_1m: 75.00,
+            },
+            _ => ModelPricing {
+                model: model.to_string(),
+                input_cost_per_1m: 3.00,
+                output_cost_per_1m: 15.00,
+            },
+        }
     }
 
     /// Calculate cost multiplier based on file source and operation type

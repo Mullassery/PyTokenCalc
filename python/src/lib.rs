@@ -173,6 +173,16 @@ impl PyCostReporter {
         }).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
         Ok(serde_json::to_string(&result).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?)
     }
+
+    /// Compare model costs for informed model selection
+    pub fn compare_models(&self, tokens_input: u32, tokens_output: u32) -> PyResult<String> {
+        let rt = tokio::runtime::Handle::current();
+        let result = rt.block_on(async {
+            let reporter = self.reporter.lock().await;
+            reporter.compare_models(tokens_input, tokens_output).await
+        }).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
+        Ok(serde_json::to_string(&result).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?)
+    }
 }
 
 /// Initialize Python module

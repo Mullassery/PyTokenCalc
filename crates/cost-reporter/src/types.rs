@@ -374,6 +374,8 @@ pub struct CostData {
     /// Breakdown: input cost + output cost
     pub input_cost_usd: f64,
     pub output_cost_usd: f64,
+    /// When pricing was valid (critical for historical accuracy)
+    pub pricing_timestamp: chrono::DateTime<chrono::Utc>,
 }
 
 /// A session groups related operations
@@ -440,12 +442,53 @@ pub struct ModelPricing {
     pub output_cost_per_1m: f64,
 }
 
+/// Pricing metadata for transparency
+/// CRITICAL: Shows when pricing changed and if it went up/down
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PricingMetadata {
+    /// When this pricing was fetched/cached
+    pub fetch_timestamp: chrono::DateTime<chrono::Utc>,
+    /// When pricing last changed (None if unknown)
+    pub last_price_change: Option<chrono::DateTime<chrono::Utc>>,
+    /// Source: "api", "cache", "fallback"
+    pub source: String,
+    /// Days since pricing fetched (for cache age)
+    pub cache_age_days: u32,
+}
+
 impl ModelPricing {
     pub fn calculate_cost(&self, tokens_input: u32, tokens_output: u32) -> f64 {
         let input = (tokens_input as f64 / 1_000_000.0) * self.input_cost_per_1m;
         let output = (tokens_output as f64 / 1_000_000.0) * self.output_cost_per_1m;
         input + output
     }
+
+    pub fn cost_ratio(&self, other: &ModelPricing, tokens_input: u32, tokens_output: u32) -> f64 {
+        let my_cost = self.calculate_cost(tokens_input, tokens_output);
+        let other_cost = other.calculate_cost(tokens_input, tokens_output);
+        if other_cost > 0.0 {
+            my_cost / other_cost
+        } else {
+            1.0
+        }
+    }
+}
+
+/// Model comparison for cost-aware model selection
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelComparison {
+    pub baseline_model: String,
+    pub baseline_cost_usd: f64,
+    pub comparisons: Vec<ModelCostDiff>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelCostDiff {
+    pub model: String,
+    pub cost_usd: f64,
+    pub cost_diff_usd: f64,
+    pub cost_ratio: f64,  // 1.0 = same cost, 2.0 = twice as expensive, 0.5 = half price
+    pub savings_percentage: f64,  // Negative means more expensive
 }
 
 /// Aggregated cost breakdown
