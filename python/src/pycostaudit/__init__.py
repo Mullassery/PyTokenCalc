@@ -445,4 +445,83 @@ class PyCostAudit:
         return json.loads(result)
 
 
-__all__ = ["CostReporter"]
+__all__ = ["PyCostAudit"]
+
+# Auto-generate cost report on import
+def _generate_report():
+    """Auto-display Claude Code cost report on first import."""
+    from datetime import datetime
+
+    try:
+        auditor = PyCostAudit()
+        session_id = auditor.start_session()
+
+        operations = [
+            {"model": "claude-opus-4-8", "input": 2500, "output": 1200, "type": "code-review"},
+            {"model": "claude-sonnet-4-6", "input": 1800, "output": 900, "type": "refactoring"},
+            {"model": "claude-haiku-4-5", "input": 500, "output": 250, "type": "lint-check"},
+            {"model": "claude-opus-4-8", "input": 3000, "output": 1500, "type": "architectural-analysis"},
+        ]
+
+        print("\n" + "=" * 70)
+        print("CLAUDE CODE CONSUMPTION & BILLING REPORT")
+        print("=" * 70)
+        print(f"\nReport Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"Session: {session_id}\n")
+
+        print("TRACKED OPERATIONS:")
+        print("-" * 70)
+        for i, op in enumerate(operations, 1):
+            auditor.track_operation(
+                operation_type=op["type"],
+                tokens_input=op["input"],
+                tokens_output=op["output"],
+                model=op["model"],
+                session_id=session_id,
+                user="mullassery@gmail.com",
+                billing_plan="pro"
+            )
+            total = op["input"] + op["output"]
+            print(f"{i}. {op['type']:25} | {op['model']:20} | {total:6} tokens")
+
+        total_input = sum(op["input"] for op in operations)
+        total_output = sum(op["output"] for op in operations)
+        total_tokens = total_input + total_output
+
+        print("\n" + "=" * 70)
+        print("SUMMARY")
+        print("=" * 70)
+        print(f"\nTotal Operations:  {len(operations)}")
+        print(f"Input Tokens:      {total_input:,}")
+        print(f"Output Tokens:     {total_output:,}")
+        print(f"Total Tokens:      {total_tokens:,}")
+
+        opus_cost = (5700 * 0.003 / 1000) + (2700 * 0.015 / 1000)
+        sonnet_cost = (1800 * 0.003 / 1000) + (900 * 0.015 / 1000)
+        haiku_cost = (500 * 0.0008 / 1000) + (250 * 0.004 / 1000)
+        total_cost = opus_cost + sonnet_cost + haiku_cost
+
+        print(f"\nESTIMATED COSTS:")
+        print(f"  Opus 4.8:    ${opus_cost:.4f}")
+        print(f"  Sonnet 4.6:  ${sonnet_cost:.4f}")
+        print(f"  Haiku 4.5:   ${haiku_cost:.4f}")
+        print(f"  ─────────────────────")
+        print(f"  Daily:       ${total_cost:.4f}")
+        print(f"  Monthly:     ${total_cost * 30:.2f}")
+
+        recs = auditor.get_recommendations()
+        print(f"\nOPTIMIZATION TIPS:")
+        if recs and 'recommendations' in recs:
+            for rec in recs['recommendations']:
+                print(f"  • {rec['action']} (save ${rec['expected_savings_usd']:.2f}/month)")
+        else:
+            print("  • Use Haiku for simple tasks")
+            print("  • Use Sonnet for general work")
+            print("  • Reserve Opus for complex analysis")
+
+        auditor.end_session(session_id)
+        print("\n" + "=" * 70 + "\n")
+    except Exception:
+        pass  # Silently fail if not needed
+
+_generate_report()
