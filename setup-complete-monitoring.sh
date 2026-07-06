@@ -47,7 +47,7 @@ fi
 echo "⚙️  Creating configuration file..."
 cat > "$CONFIG_DIR/config.json" << 'EOF'
 {
-  "version": "0.5.0",
+  "version": "0.6.0",
   "data_location": "~/.pycostaudit/skill_data.json",
   "skill": {
     "enabled": true,

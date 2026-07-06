@@ -463,7 +463,7 @@ async def broadcast_cost_update(user_id: str, cost_data: dict):
 @app.get("/health")
 def health_check():
     """Health check endpoint"""
-    return {"status": "ok", "version": "0.5.0"}
+    return {"status": "ok", "version": "0.6.0"}
 
 
 if __name__ == "__main__":

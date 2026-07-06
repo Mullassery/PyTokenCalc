@@ -102,20 +102,28 @@ Perfect for: Always-on monitoring, browser-based workflows, team dashboards
 
 ---
 
-## Recent Updates (v0.5.0)
+## Recent Updates (v0.6.0)
 
-### Phase 2: Multi-Provider & Dashboard ✅
+### Phase 4: Ultra-Detailed Token Classification ✅ NEW
+- Detailed token classifier with 50+ tracking dimensions
+  * Token sources, task categories, complexity levels, file types
+  * Input delivery methods (pasted to browser scraping: 1.0x-55x)
+  * Time-of-day multipliers and regional pricing (0.7x-1.3x)
+  * Vision token processing, tool overhead, cache effectiveness
+  * Context window usage analysis
+- Enhanced recommendations engine with targeted optimizations
+  * 8 recommendation types ranked by ROI
+  * Specific cost driver analysis per operation
+  * Implementation effort estimates and confidence scores
+
+### Phase 2-3: Multi-Provider & Dashboard ✅
 - Multi-provider cost tracking (OpenAI, AWS Bedrock, Google Gemini)
 - Real-time web dashboard (FastAPI + Next.js)
 - Alert system (Slack + Twilio SMS)
 - OpenTelemetry integration (Jaeger + Prometheus)
-
-### Phase 3: Multi-Surface Integration ✅ NEW
 - Claude Code Skill with auto-tracking hooks
 - CLI Monitor with real-time updates
 - Browser Extension for Chrome
-- Dual-monitoring setup with complete automation
-- 4 comprehensive documentation guides
 
 ---
 
