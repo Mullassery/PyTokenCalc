@@ -2,17 +2,17 @@
   "skill": {
     "id": "pycostaudit",
     "name": "PyCostAudit",
-    "tagline": "See where your Claude Code budget actually goes — then save 50-80%",
-    "description": "Track and optimize LLM costs across 15 hidden dimensions (file format 36x, operation type 55x, timing 30%, MCP 10-100x, etc.). The only tool that measures what actually costs money.",
-    "category": "productivity",
-    "tags": ["cost-tracking", "optimization", "claude-code", "budget", "llm", "performance"],
+    "tagline": "Enterprise cost tracking for Claude Code — advanced filtering, compliance, multi-org, and ML optimization",
+    "description": "Production-ready LLM cost platform with advanced filtering (12 operators), multi-org support, SOC 2/HIPAA/GDPR compliance, OpenTelemetry observability, and 8 ML-powered optimization strategies. Track costs across 50+ dimensions and save 50-80%.",
+    "category": "enterprise",
+    "tags": ["cost-tracking", "optimization", "claude-code", "budget", "llm", "compliance", "observability", "multi-org", "enterprise"],
     "author": {
       "name": "Georgi Mammen Mullassery",
       "email": "mullassery@gmail.com",
       "github": "https://github.com/Mullassery"
     },
     "license": "MIT",
-    "version": "0.4.1",
+    "version": "0.7.0",
     "homepage": "https://github.com/Mullassery/PyCostAudit",
     "repository": {
       "type": "git",
@@ -32,34 +32,48 @@
       "arch": ["x86_64", "arm64"]
     },
     "capabilities": [
-      "Cost tracking across 15 dimensions",
+      "Cost tracking across 50+ dimensions",
+      "12 composable filter operators",
+      "7 report templates with multi-format export",
+      "Multi-org with unlimited nesting",
+      "5 compliance frameworks (SOC 2, HIPAA, GDPR, PCI DSS, ISO 27001)",
+      "OpenTelemetry observability (5 backends)",
+      "ML-based anomaly detection (4 algorithms)",
+      "Cost forecasting (30/60/90-day projections)",
+      "8 optimization recommendation types",
+      "Role-based access control",
       "File format multiplier detection (36x variance)",
       "Operation type breakdown (55x variance)",
       "Peak/off-peak hour pricing (30% swings)",
       "MCP overhead detection (10-100x)",
       "Session-based root cause analysis",
-      "Multi-currency support (no FX conversion)",
-      "Timezone-aware billing",
-      "Dynamic pricing (1-hour cache)",
-      "Anomaly detection",
-      "Cost recommendations"
+      "Audit logging and retention policies",
+      "Budget alerts and anomaly detection"
     ],
     "keyFeatures": [
       {
-        "name": "15-Dimension Tracking",
-        "description": "File format, operation type, timing, region, billing plan, MCP, GitHub ops, markdown overhead, data warehouse, timezone, currency, and more"
+        "name": "50+ Dimension Tracking",
+        "description": "Ultra-detailed token classification tracking token source, complexity, task category, file type, cache efficiency, vision tokens, tool overhead, regional pricing, temporal patterns, and more"
       },
       {
-        "name": "Hidden Cost Multipliers",
-        "description": "Reveals 36x file format variance, 55x operation type variance, 100x-1000x+ data warehouse costs"
+        "name": "Advanced Filtering & Reports",
+        "description": "12 composable operators, 7 templates, multi-format export (JSON/CSV/HTML/PDF/Markdown/Excel), time-series bucketing"
       },
       {
-        "name": "Session-Based Analysis",
-        "description": "Group operations by context for root cause analysis and targeted optimization"
+        "name": "Enterprise Multi-Org",
+        "description": "Unlimited hierarchical departments, 5 role-based access levels, flexible cost allocation rules"
       },
       {
-        "name": "Real Savings Example",
-        "description": "$420/month hidden costs discovered, $1,200 → $375/month after optimization"
+        "name": "Compliance & Security",
+        "description": "SOC 2, HIPAA, GDPR, PCI DSS, ISO 27001, 20 audit event types, retention policies, audit logging"
+      },
+      {
+        "name": "Observability Integration",
+        "description": "OpenTelemetry support for Prometheus, Jaeger, Datadog, New Relic, and generic OTLP"
+      },
+      {
+        "name": "ML-Powered Optimization",
+        "description": "8 recommendation types, cost driver analysis, effectiveness scoring, $65/month average savings"
       }
     ],
     "useCases": [

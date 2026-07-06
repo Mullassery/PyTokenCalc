@@ -1,8 +1,8 @@
 {
   "name": "pycostaudit",
-  "version": "0.4.1",
-  "displayName": "PyCostAudit: LLM Cost Auditing & Optimization",
-  "description": "Track and optimize LLM costs across all operations, identifying hidden multipliers nobody else measures",
+  "version": "0.7.0",
+  "displayName": "PyCostAudit: Enterprise LLM Cost Optimization",
+  "description": "Enterprise-grade cost tracking for Claude Code - advanced filtering, multi-org support, compliance, observability, and ML-powered optimization",
   "author": "Georgi Mammen Mullassery",
   "license": "MIT",
   "repository": "https://github.com/Mullassery/PyCostAudit",
@@ -14,6 +14,14 @@
       "dataWarehouseQueries": "Profiles database reads and S3 operations (100x-1000x+)",
       "saasAdvancedMcpEfficiency": "Detects SaaS MCP internal overhead (10x-100x)",
       "sessionTracking": "Groups operations by context for root cause analysis"
+    },
+    "enterprise": {
+      "advancedFiltering": "12 composable operators (EQ, NE, GT, GTE, LT, LTE, IN, NOT_IN, CONTAINS, BETWEEN, REGEX)",
+      "customReports": "7 templates with JSON/CSV/HTML/PDF/Markdown/Excel export",
+      "multiOrg": "Unlimited hierarchical departments with role-based access control",
+      "compliance": "SOC 2, HIPAA, GDPR, PCI DSS, ISO 27001 audit logging",
+      "observability": "OpenTelemetry integration (Prometheus, Jaeger, Datadog, New Relic, OTLP)",
+      "recommendations": "8 optimization strategies with ROI calculation and cost driver analysis"
     }
   },
   "commands": {
@@ -90,6 +98,18 @@
     },
     "detect_anomalies": {
       "description": "Detect unusual spending patterns or spikes"
+    },
+    "build_custom_report": {
+      "description": "Build advanced custom reports with filtering and aggregation"
+    },
+    "create_organization": {
+      "description": "Create multi-org structure for team cost tracking"
+    },
+    "get_compliance_status": {
+      "description": "Check compliance status (SOC 2, HIPAA, GDPR, PCI DSS, ISO 27001)"
+    },
+    "export_to_observability": {
+      "description": "Export metrics and traces to observability backends"
     }
   },
   "examples": {
