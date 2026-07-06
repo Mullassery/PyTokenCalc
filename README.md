@@ -341,6 +341,18 @@ Result: $1,200 → $375/month. You just kept $10k/year.
 
 ---
 
+## 📖 Documentation
+
+**Full documentation available in [USAGE.md](./USAGE.md)** - Complete guide for installation, setup, API reference, and common workflows for both humans and AI agents.
+
+- **[USAGE.md](./USAGE.md)** ← Start here! Complete usage guide with examples
+- [QUICK_START.md](./QUICK_START.md) - 5-minute setup
+- [ARCHITECTURE.md](./ARCHITECTURE.md) - Technical deep dive
+- [ALERTS_SETUP.md](./ALERTS_SETUP.md) - Configure alerts
+- [REPORTS_SETUP.md](./REPORTS_SETUP.md) - Automated reporting
+
+---
+
 ## Installation & Quick Start
 
 ### Prerequisites
@@ -356,6 +368,8 @@ pip install pycostaudit
 # Or using uv (faster)
 uv pip install pycostaudit
 ```
+
+**→ For complete setup instructions, see [USAGE.md Installation Section](./USAGE.md#installation)**
 
 ### Start Tracking (Choose Your Method)
 
