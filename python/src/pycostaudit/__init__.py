@@ -447,81 +447,80 @@ class PyCostAudit:
 
 __all__ = ["PyCostAudit"]
 
-# Auto-generate cost report on import
+# Auto-generate REAL cost report on import using Claude Code history
 def _generate_report():
-    """Auto-display Claude Code cost report on first import."""
+    """Auto-display real PyCostAudit report from Claude Code history on first import."""
     from datetime import datetime
+    import sys
+    from pathlib import Path
 
     try:
-        auditor = PyCostAudit()
-        session_id = auditor.start_session()
+        # Import the real implementation modules
+        sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+        from pycostaudit.user_context import UserContext
+        from pycostaudit.cost_calculator import CostCalculator
 
-        operations = [
-            {"model": "claude-opus-4-8", "input": 2500, "output": 1200, "type": "code-review"},
-            {"model": "claude-sonnet-4-6", "input": 1800, "output": 900, "type": "refactoring"},
-            {"model": "claude-haiku-4-5", "input": 500, "output": 250, "type": "lint-check"},
-            {"model": "claude-opus-4-8", "input": 3000, "output": 1500, "type": "architectural-analysis"},
-        ]
+        print("\n" + "=" * 90)
+        print("PyCostAudit v0.8.0 — REAL-TIME COST AUDIT REPORT")
+        print("=" * 90)
+        print(f"\nReport Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
 
-        print("\n" + "=" * 70)
-        print("CLAUDE CODE CONSUMPTION & BILLING REPORT")
-        print("=" * 70)
-        print(f"\nReport Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        print(f"Session: {session_id}\n")
+        # Load Claude Code history
+        user_context = UserContext()
+        profile = user_context.get_user_profile()
 
-        print("TRACKED OPERATIONS:")
-        print("-" * 70)
-        for i, op in enumerate(operations, 1):
-            auditor.track_operation(
-                operation_type=op["type"],
-                tokens_input=op["input"],
-                tokens_output=op["output"],
-                model=op["model"],
-                session_id=session_id,
-                user="mullassery@gmail.com",
-                billing_plan="pro"
-            )
-            total = op["input"] + op["output"]
-            print(f"{i}. {op['type']:25} | {op['model']:20} | {total:6} tokens")
+        print("📖 Claude Code History:")
+        print(f"   Sessions analyzed: {profile['sessions_count']:,}")
+        print(f"   Active projects: {', '.join(sorted(profile['projects'])) or 'None'}")
+        print(f"   Plan detected: {profile['plan_type']}\n")
 
-        total_input = sum(op["input"] for op in operations)
-        total_output = sum(op["output"] for op in operations)
-        total_tokens = total_input + total_output
+        # Calculate actual costs
+        calc = CostCalculator()
+        breakdown = calc.get_cost_breakdown()
 
-        print("\n" + "=" * 70)
-        print("SUMMARY")
-        print("=" * 70)
-        print(f"\nTotal Operations:  {len(operations)}")
-        print(f"Input Tokens:      {total_input:,}")
-        print(f"Output Tokens:     {total_output:,}")
-        print(f"Total Tokens:      {total_tokens:,}")
+        total_cost = breakdown['total_cost_usd']
+        total_tokens = breakdown['estimated_total_tokens']
+        avg_daily = breakdown['average_daily_cost_usd']
 
-        opus_cost = (5700 * 0.003 / 1000) + (2700 * 0.015 / 1000)
-        sonnet_cost = (1800 * 0.003 / 1000) + (900 * 0.015 / 1000)
-        haiku_cost = (500 * 0.0008 / 1000) + (250 * 0.004 / 1000)
-        total_cost = opus_cost + sonnet_cost + haiku_cost
+        print("=" * 90)
+        print("💰 YOUR SPENDING")
+        print("=" * 90)
+        print(f"\nTotal Spending (all time):      ${total_cost:.2f}")
+        print(f"Average Daily Cost:             ${avg_daily:.2f}/day")
+        print(f"Projected Monthly:              ${avg_daily * 30:.2f}/month")
+        print(f"Total Tokens Used:              {total_tokens:,}\n")
 
-        print(f"\nESTIMATED COSTS:")
-        print(f"  Opus 4.8:    ${opus_cost:.4f}")
-        print(f"  Sonnet 4.6:  ${sonnet_cost:.4f}")
-        print(f"  Haiku 4.5:   ${haiku_cost:.4f}")
-        print(f"  ─────────────────────")
-        print(f"  Daily:       ${total_cost:.4f}")
-        print(f"  Monthly:     ${total_cost * 30:.2f}")
+        print("Breakdown by Project:")
+        for project, data in sorted(breakdown['projects'].items(), key=lambda x: x[1]['cost_usd'], reverse=True):
+            cost = data['cost_usd']
+            pct = data['percentage']
+            if cost > 0:
+                print(f"  • {project:20} ${cost:7.2f} ({pct:5.1f}%)")
 
-        recs = auditor.get_recommendations()
-        print(f"\nOPTIMIZATION TIPS:")
-        if recs and 'recommendations' in recs:
-            for rec in recs['recommendations']:
-                print(f"  • {rec['action']} (save ${rec['expected_savings_usd']:.2f}/month)")
-        else:
-            print("  • Use Haiku for simple tasks")
-            print("  • Use Sonnet for general work")
-            print("  • Reserve Opus for complex analysis")
+        print()
 
-        auditor.end_session(session_id)
-        print("\n" + "=" * 70 + "\n")
-    except Exception:
-        pass  # Silently fail if not needed
+        # Anomalies
+        anomalies = calc.detect_anomalies(threshold_multiplier=3.0)
+        if anomalies:
+            print("=" * 90)
+            print("⚠️  COST ANOMALIES (3x+ average)")
+            print("=" * 90 + "\n")
+            for i, anom in enumerate(anomalies[:3], 1):
+                print(f"  {i}. {anom['project']:20} ${anom['cost_usd']:8.4f} ({anom['multiplier']}x)")
+                print(f"     Tokens: {anom['tokens_in']:,} in / {anom['tokens_out']:,} out")
+            print()
+
+        # Recommendations
+        print("=" * 90)
+        print("💡 OPTIMIZATION TIPS")
+        print("=" * 90 + "\n")
+        rec = user_context.get_personalized_recommendation()
+        print(f"{rec}\n")
+
+        print("=" * 90 + "\n")
+
+    except Exception as e:
+        # Fallback to silent mode if imports fail
+        pass
 
 _generate_report()
