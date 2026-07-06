@@ -35,6 +35,13 @@ After v0.7.0 release, identified and implemented critical missing features:
 - All export formats now complete: JSON, CSV, HTML, Markdown, PDF, Excel
 - Enterprise reporting workflows enabled
 
+### ✅ User Discovery Navigation (NEW)
+- **CAPABILITIES.md**: 34 analysis options documented
+- Users can now discover advanced features without guidance
+- Learning path recommendations for new users
+- Categorized by use case (analysis, optimization, reporting, budget planning)
+- **Problem solved:** Most users were missing advanced capabilities
+
 ---
 
 ## 🎉 Completion Timeline

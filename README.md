@@ -343,9 +343,21 @@ Result: $1,200 → $375/month. You just kept $10k/year.
 
 ## 📖 Documentation
 
-**Full documentation available in [USAGE.md](./USAGE.md)** - Complete guide for installation, setup, API reference, and common workflows for both humans and AI agents.
+**Start with [CAPABILITIES.md](./CAPABILITIES.md)** - Discover 34 different analyses & optimizations you can run on your real data. This is what most users miss!
 
-- **[USAGE.md](./USAGE.md)** ← Start here! Complete usage guide with examples
+### 🗺️ Navigation Guide
+- **[CAPABILITIES.md](./CAPABILITIES.md)** ← **START HERE!** Explore 34 analyses you can run
+  - Analysis & Insights (5 options)
+  - Optimization & Recommendations (5 options)
+  - Reporting & Exports (4 options)
+  - Deep Dives & Investigation (5 options)
+  - Budget & Planning (4 options)
+  - Advanced Features (4 options)
+  - Technical & Integration (3 options)
+  - Learning & Documentation (4 options)
+
+### 📚 Complete Guides
+- [USAGE.md](./USAGE.md) - Full usage guide with API reference and examples
 - [QUICK_START.md](./QUICK_START.md) - 5-minute setup
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - Technical deep dive
 - [ALERTS_SETUP.md](./ALERTS_SETUP.md) - Configure alerts
