@@ -29,6 +29,15 @@ Thumbs.db
 skill/dist/
 skill/build/
 server/dist/
+target/
+*.whl
+*.egg-info/
+
+# Rust/Cargo
+Cargo.lock
+**/*.rlib
+**/*.so
+**/*.dylib
 
 # Test coverage
 .coverage
