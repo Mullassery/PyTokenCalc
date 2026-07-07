@@ -4,7 +4,7 @@ build-backend = "maturin.build"
 
 [project]
 name = "pycostaudit"
-version = "0.9.0"
+version = "1.0.0"
 description = "Track Claude API costs across 15+ dimensions — ML forecasting, budget alerts, compliance reporting. Identify hidden cost multipliers (3.6x-1000x) and save 50-80% on LLM spending."
 readme = "README.md"
 requires-python = ">=3.9"
