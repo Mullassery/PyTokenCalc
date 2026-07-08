@@ -112,7 +112,14 @@ mod tests {
         let session = manager.create_session(None);
         let result = manager.add_operation_to_session(&session.id, "op-123".to_string());
         assert!(result.is_ok());
-        assert_eq!(manager.get_session(&session.id).unwrap().operation_ids.len(), 1);
+        assert_eq!(
+            manager
+                .get_session(&session.id)
+                .unwrap()
+                .operation_ids
+                .len(),
+            1
+        );
     }
 
     #[test]
@@ -132,7 +139,12 @@ mod tests {
         let result = manager.tag_session(&session.id, "branch".to_string(), "main".to_string());
         assert!(result.is_ok());
         assert_eq!(
-            manager.get_session(&session.id).unwrap().tags.get("branch").unwrap(),
+            manager
+                .get_session(&session.id)
+                .unwrap()
+                .tags
+                .get("branch")
+                .unwrap(),
             "main"
         );
     }

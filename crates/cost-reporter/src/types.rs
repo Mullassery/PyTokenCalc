@@ -1,8 +1,8 @@
 //! Core data types for cost tracking
 
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use std::collections::HashMap;
+use uuid::Uuid;
 
 /// Billing plan/tier for Claude
 /// CRITICAL: Pricing varies dramatically by plan
@@ -475,7 +475,11 @@ impl DataSource {
     /// CRITICAL: These are not linear - 1M rows = exponential token growth
     pub fn estimate_tokens(&self) -> u32 {
         match self {
-            DataSource::Database { row_count, data_size_mb, .. } => {
+            DataSource::Database {
+                row_count,
+                data_size_mb,
+                ..
+            } => {
                 // Database result sets:
                 // - 100 rows, 1MB: ~500 tokens
                 // - 10k rows, 100MB: ~50,000 tokens
@@ -485,7 +489,10 @@ impl DataSource {
                 let row_tokens = (*row_count as f32 * 5.0) as u32; // Each row adds overhead
                 data_tokens + row_tokens + 500
             }
-            DataSource::S3 { file_count, data_size_mb } => {
+            DataSource::S3 {
+                file_count,
+                data_size_mb,
+            } => {
                 // S3 bucket listing is expensive
                 // - 10 files, 100MB: ~50k tokens (file listing overhead)
                 // - 1000 files, 10GB: ~5M tokens
@@ -493,12 +500,19 @@ impl DataSource {
                 let data_tokens = (data_size_mb * 1024.0 * 1024.0 * 0.5) as u32;
                 listing_tokens + data_tokens + 1000
             }
-            DataSource::Api { response_size_kb, .. } => {
+            DataSource::Api {
+                response_size_kb, ..
+            } => {
                 // API responses (usually JSON, less dense than raw data)
                 // ~1 token per 4 bytes
                 (*response_size_kb as f32 * 1024.0 * 0.25) as u32
             }
-            DataSource::DataWarehouse { row_count, column_count, data_size_mb, .. } => {
+            DataSource::DataWarehouse {
+                row_count,
+                column_count,
+                data_size_mb,
+                ..
+            } => {
                 // Data warehouse queries are MASSIVE
                 // - Snowflake 100k rows × 50 columns: ~250k tokens
                 // - BigQuery 1M rows × 100 columns: ~2.5M tokens
@@ -521,16 +535,34 @@ impl DataSource {
 
     pub fn description(&self) -> String {
         match self {
-            DataSource::Database { db_type, row_count, data_size_mb } => {
-                format!("{} query: {} rows, {:.1}MB", db_type, row_count, data_size_mb)
+            DataSource::Database {
+                db_type,
+                row_count,
+                data_size_mb,
+            } => {
+                format!(
+                    "{} query: {} rows, {:.1}MB",
+                    db_type, row_count, data_size_mb
+                )
             }
-            DataSource::S3 { file_count, data_size_mb } => {
+            DataSource::S3 {
+                file_count,
+                data_size_mb,
+            } => {
                 format!("S3 access: {} files, {:.1}MB", file_count, data_size_mb)
             }
-            DataSource::Api { endpoint, response_size_kb } => {
+            DataSource::Api {
+                endpoint,
+                response_size_kb,
+            } => {
                 format!("API {}: {}KB response", endpoint, response_size_kb)
             }
-            DataSource::DataWarehouse { warehouse_type, row_count, column_count, data_size_mb } => {
+            DataSource::DataWarehouse {
+                warehouse_type,
+                row_count,
+                column_count,
+                data_size_mb,
+            } => {
                 format!(
                     "{} query: {} rows × {} cols, {:.1}MB",
                     warehouse_type, row_count, column_count, data_size_mb
@@ -676,8 +708,8 @@ pub struct ModelCostDiff {
     pub model: String,
     pub cost_usd: f64,
     pub cost_diff_usd: f64,
-    pub cost_ratio: f64,  // 1.0 = same cost, 2.0 = twice as expensive, 0.5 = half price
-    pub savings_percentage: f64,  // Negative means more expensive
+    pub cost_ratio: f64, // 1.0 = same cost, 2.0 = twice as expensive, 0.5 = half price
+    pub savings_percentage: f64, // Negative means more expensive
 }
 
 /// Aggregated cost breakdown

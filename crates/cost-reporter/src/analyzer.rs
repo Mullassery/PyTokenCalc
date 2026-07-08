@@ -1,6 +1,6 @@
 //! Cost analysis and recommendations generation
 
-use crate::types::{Operation, ModelPricing, ModelComparison, ModelCostDiff, BillingPlan};
+use crate::types::{BillingPlan, ModelComparison, ModelCostDiff, ModelPricing, Operation};
 use chrono_tz::Tz;
 use std::collections::HashMap;
 use std::str::FromStr;
@@ -17,14 +17,12 @@ impl CostAnalyzer {
     pub fn billing_plan_cost(plan: BillingPlan, model: &str) -> (f64, f64) {
         match plan {
             // API pricing (pay-per-token, most expensive)
-            BillingPlan::Api => {
-                match model {
-                    "claude-3-5-sonnet" => (3.00, 15.00),
-                    "claude-3-5-haiku" => (0.80, 4.00),
-                    "claude-3-opus" => (15.00, 75.00),
-                    _ => (3.00, 15.00),
-                }
-            }
+            BillingPlan::Api => match model {
+                "claude-3-5-sonnet" => (3.00, 15.00),
+                "claude-3-5-haiku" => (0.80, 4.00),
+                "claude-3-opus" => (15.00, 75.00),
+                _ => (3.00, 15.00),
+            },
             // Pro plan ($20/month fixed, unlimited within limits)
             // Effective cost depends on usage volume
             BillingPlan::Pro => {
@@ -53,7 +51,7 @@ impl CostAnalyzer {
             BillingPlan::Enterprise => {
                 // Assume 30% discount from API pricing
                 match model {
-                    "claude-3-5-sonnet" => (2.10, 10.50),  // 30% discount
+                    "claude-3-5-sonnet" => (2.10, 10.50), // 30% discount
                     "claude-3-5-haiku" => (0.56, 2.80),
                     "claude-3-opus" => (10.50, 52.50),
                     _ => (2.10, 10.50),
@@ -76,7 +74,8 @@ impl CostAnalyzer {
 
         // Scale to monthly if less than a month of data
         let hours_elapsed = if operations.len() > 0 {
-            (operations.last().unwrap().timestamp - operations.first().unwrap().timestamp).num_hours()
+            (operations.last().unwrap().timestamp - operations.first().unwrap().timestamp)
+                .num_hours()
         } else {
             24
         };
@@ -85,7 +84,8 @@ impl CostAnalyzer {
         let monthly_output = total_output as f64 * (30.0 / days_elapsed);
 
         // Get model from first operation
-        let model = operations.first()
+        let model = operations
+            .first()
             .map(|op| op.model.as_str())
             .unwrap_or("claude-3-5-sonnet");
 
@@ -171,7 +171,10 @@ impl CostAnalyzer {
     /// Generate timezone-aware daily cost breakdown
     /// Groups operations by their local date in each user's timezone
     /// Critical for distributed teams with budget resets at local midnight
-    pub fn daily_breakdown_by_timezone(&self, operations: &[Operation]) -> anyhow::Result<serde_json::Value> {
+    pub fn daily_breakdown_by_timezone(
+        &self,
+        operations: &[Operation],
+    ) -> anyhow::Result<serde_json::Value> {
         if operations.is_empty() {
             return Ok(serde_json::json!({
                 "period": "daily",
@@ -317,7 +320,11 @@ impl CostAnalyzer {
     }
 
     /// Generate session diagnosis with root cause and recommendations
-    pub fn session_diagnosis(&self, operations: &[Operation], session_id: &str) -> anyhow::Result<serde_json::Value> {
+    pub fn session_diagnosis(
+        &self,
+        operations: &[Operation],
+        session_id: &str,
+    ) -> anyhow::Result<serde_json::Value> {
         if operations.is_empty() {
             return Ok(serde_json::json!({
                 "session_id": session_id,
@@ -351,7 +358,7 @@ impl CostAnalyzer {
         // Find biggest waste
         let (biggest_type, (biggest_count, biggest_cost)) = by_type
             .iter()
-            .max_by(|a, b| a.1.1.partial_cmp(&b.1.1).unwrap())
+            .max_by(|a, b| a.1 .1.partial_cmp(&b.1 .1).unwrap())
             .map(|(k, v)| (k.clone(), v.clone()))
             .unwrap_or_default();
 
@@ -389,7 +396,7 @@ impl CostAnalyzer {
         }
 
         let mut ranking: Vec<_> = mcp_costs.into_iter().collect();
-        ranking.sort_by(|a, b| b.1.1.partial_cmp(&a.1.1).unwrap());
+        ranking.sort_by(|a, b| b.1 .1.partial_cmp(&a.1 .1).unwrap());
 
         let total_mcp_cost: f64 = ranking.iter().map(|(_, (_, cost))| cost).sum();
 
@@ -415,7 +422,10 @@ impl CostAnalyzer {
     }
 
     /// Generate optimization recommendations
-    pub fn generate_recommendations(&self, _operations: &[Operation]) -> anyhow::Result<serde_json::Value> {
+    pub fn generate_recommendations(
+        &self,
+        _operations: &[Operation],
+    ) -> anyhow::Result<serde_json::Value> {
         // Placeholder: in production, this analyzes patterns and returns actionable fixes
         Ok(serde_json::json!({
             "recommendations": [
@@ -440,7 +450,10 @@ impl CostAnalyzer {
 
     /// Forecast quarterly costs with pricing volatility disclaimer
     /// CRITICAL: All forecasts include disclaimer that pricing changes invalidate forecast
-    pub fn forecast_quarterly(&self, operations: &[Operation]) -> anyhow::Result<serde_json::Value> {
+    pub fn forecast_quarterly(
+        &self,
+        operations: &[Operation],
+    ) -> anyhow::Result<serde_json::Value> {
         if operations.is_empty() {
             return Ok(serde_json::json!({
                 "error": "No operations to forecast from",
@@ -448,7 +461,8 @@ impl CostAnalyzer {
             }));
         }
 
-        let total_cost: f64 = operations.iter()
+        let total_cost: f64 = operations
+            .iter()
             .map(|_| 0.01) // Placeholder: would use actual cost from storage
             .sum();
 
@@ -529,12 +543,20 @@ impl CostAnalyzer {
     fn estimate_cost(&self, op: &Operation) -> f64 {
         // Placeholder: real implementation uses CostData from storage
         let base = (op.tokens_input as f64 * 0.000003) + (op.tokens_output as f64 * 0.000015);
-        let multiplier = op.file_source.as_ref().map(|fs| fs.multiplier()).unwrap_or(1.0);
+        let multiplier = op
+            .file_source
+            .as_ref()
+            .map(|fs| fs.multiplier())
+            .unwrap_or(1.0);
         base * multiplier
     }
 
     /// Generate session-specific recommendations
-    fn generate_session_recommendations(&self, by_type: &HashMap<String, (u32, f64)>, _total: f64) -> serde_json::Value {
+    fn generate_session_recommendations(
+        &self,
+        by_type: &HashMap<String, (u32, f64)>,
+        _total: f64,
+    ) -> serde_json::Value {
         let recommendations: Vec<_> = by_type
             .iter()
             .filter(|(_, (count, _))| count > &3)

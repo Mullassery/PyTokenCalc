@@ -1,12 +1,12 @@
 //! Immutable audit logging for compliance
 
+use crate::storage::StorageBackend;
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::sync::Arc;
-use chrono::{DateTime, Utc};
-use uuid::Uuid;
 use sqlx::Row;
-use crate::storage::StorageBackend;
+use std::sync::Arc;
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AuditEventType {
@@ -110,14 +110,22 @@ impl AuditLogger {
             .await
             .map_err(|e| anyhow::anyhow!("Failed to log audit event: {}", e))?;
 
-            tracing::debug!("✅ Audit event logged: {} ({})", event.event_type.to_string(), event.id);
+            tracing::debug!(
+                "✅ Audit event logged: {} ({})",
+                event.event_type.to_string(),
+                event.id
+            );
         }
 
         Ok(())
     }
 
     /// Retrieve audit logs with optional filtering
-    pub async fn get_logs(&self, org_id: &str, limit: Option<i64>) -> anyhow::Result<Vec<AuditEvent>> {
+    pub async fn get_logs(
+        &self,
+        org_id: &str,
+        limit: Option<i64>,
+    ) -> anyhow::Result<Vec<AuditEvent>> {
         if let Some(pool) = self.storage.get_pool() {
             let limit_val = limit.unwrap_or(100).min(1000);
 
@@ -307,7 +315,10 @@ mod tests {
     #[test]
     fn test_audit_event_type_to_string() {
         assert_eq!(AuditEventType::UserLogin.to_string(), "user_login");
-        assert_eq!(AuditEventType::UnauthorizedAccess.to_string(), "unauthorized_access");
+        assert_eq!(
+            AuditEventType::UnauthorizedAccess.to_string(),
+            "unauthorized_access"
+        );
         assert_eq!(AuditEventType::ApiKeyCreated.to_string(), "api_key_created");
     }
 }

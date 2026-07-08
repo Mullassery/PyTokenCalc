@@ -1,8 +1,8 @@
 //! Real-time cost calculation and tracking
 
-use crate::types::*;
-use crate::storage::StorageBackend;
 use crate::pricing_service::PricingService;
+use crate::storage::StorageBackend;
+use crate::types::*;
 use std::collections::HashMap;
 
 #[derive(Debug)]
@@ -53,7 +53,7 @@ impl CostTracker {
             input_cost: input_cost,
             output_cost: output_cost,
             pricing_timestamp: chrono::Utc::now(),
-            pricing_source: "fallback".to_string(),  // TODO: track actual source from pricing_service
+            pricing_source: "fallback".to_string(), // TODO: track actual source from pricing_service
         })
     }
 
@@ -116,11 +116,11 @@ impl CostTracker {
             .unwrap_or(1.0);
 
         let operation_multiplier = match operation.operation_type {
-            OperationType::ApiCall => 1.0, // Baseline
+            OperationType::ApiCall => 1.0,              // Baseline
             OperationType::FileRead => file_multiplier, // Apply file source multiplier
-            OperationType::BrowserOp => 55.0, // 55x more expensive than file read
-            OperationType::McpInvocation => 2.4, // MCP protocol overhead (small data)
-            OperationType::GitOp => 0.8, // Caching reduces cost
+            OperationType::BrowserOp => 55.0,           // 55x more expensive than file read
+            OperationType::McpInvocation => 2.4,        // MCP protocol overhead (small data)
+            OperationType::GitOp => 0.8,                // Caching reduces cost
             OperationType::DatabaseQuery => 2.0, // Small SQL query (use DataSource for big queries!)
             OperationType::InstructionContext => 1.0, // Direct cost (no multiplier, already included)
             OperationType::GitHubRead => 4.0, // 4x baseline (reading API responses, parsing issues/PRs)
@@ -173,7 +173,12 @@ mod tests {
     #[test]
     fn test_base_cost_calculation() {
         let tracker = CostTracker::new(StorageBackend::new_memory());
-        let mut op = Operation::new(OperationType::ApiCall, 1000, 500, "claude-3-5-haiku".to_string());
+        let mut op = Operation::new(
+            OperationType::ApiCall,
+            1000,
+            500,
+            "claude-3-5-haiku".to_string(),
+        );
 
         let cost = tracker.calculate_cost(&op).unwrap();
         // Haiku: $0.80 per 1M input, $4.00 per 1M output
@@ -187,8 +192,13 @@ mod tests {
     #[test]
     fn test_file_format_multiplier() {
         let tracker = CostTracker::new(StorageBackend::new_memory());
-        let mut op = Operation::new(OperationType::FileRead, 1000, 500, "claude-3-5-haiku".to_string())
-            .with_file_source(FileSource::PdfUrl);
+        let mut op = Operation::new(
+            OperationType::FileRead,
+            1000,
+            500,
+            "claude-3-5-haiku".to_string(),
+        )
+        .with_file_source(FileSource::PdfUrl);
 
         let cost = tracker.calculate_cost(&op).unwrap();
         assert_eq!(cost.multiplier, 3.6); // PDF via URL is 3.6x

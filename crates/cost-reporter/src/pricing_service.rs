@@ -12,10 +12,10 @@
 //! Solution: Fetch from provider APIs + cache by provider + TTL
 
 use crate::types::ModelPricing;
+use chrono::{DateTime, Duration, Utc};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use chrono::{DateTime, Utc, Duration};
 
 /// Pricing source/provider for Claude access
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -52,7 +52,7 @@ impl PricingService {
             cache: Arc::new(RwLock::new(PricingCache {
                 models_by_provider: HashMap::new(),
                 last_updated: None,
-                update_interval: Duration::hours(1),  // Reduced from 24h: pricing changes frequently
+                update_interval: Duration::hours(1), // Reduced from 24h: pricing changes frequently
             })),
         }
     }
@@ -61,14 +61,19 @@ impl PricingService {
     /// CRITICAL: Always attempts to fetch from source API first
     /// Falls back to cache only if API unreachable
     /// Never returns stale pricing without warning
-    pub async fn get_model_pricing(&self, model: &str, provider: PricingProvider) -> anyhow::Result<ModelPricing> {
+    pub async fn get_model_pricing(
+        &self,
+        model: &str,
+        provider: PricingProvider,
+    ) -> anyhow::Result<ModelPricing> {
         // ALWAYS try to fetch from source first
         // Pricing changes daily - cached data is suspect
         match Self::fetch_pricing_from_provider(model, provider).await {
             Ok(pricing) => {
                 // Source fetch successful - update cache with fresh data
                 let mut cache = self.cache.write().await;
-                cache.models_by_provider
+                cache
+                    .models_by_provider
                     .entry(provider)
                     .or_insert_with(HashMap::new)
                     .insert(model.to_string(), pricing.clone());
@@ -109,7 +114,10 @@ impl PricingService {
     }
 
     /// Get pricing for all providers (for comparison)
-    pub async fn get_model_pricing_all_providers(&self, model: &str) -> anyhow::Result<HashMap<PricingProvider, ModelPricing>> {
+    pub async fn get_model_pricing_all_providers(
+        &self,
+        model: &str,
+    ) -> anyhow::Result<HashMap<PricingProvider, ModelPricing>> {
         let providers = vec![
             PricingProvider::ClaudeApi,
             PricingProvider::AwsBedrock,
@@ -167,7 +175,10 @@ impl PricingService {
 
     /// Fetch pricing from provider's API
     /// CRITICAL: Each provider has different pricing structure
-    async fn fetch_pricing_from_provider(model: &str, provider: PricingProvider) -> anyhow::Result<ModelPricing> {
+    async fn fetch_pricing_from_provider(
+        model: &str,
+        provider: PricingProvider,
+    ) -> anyhow::Result<ModelPricing> {
         match provider {
             PricingProvider::ClaudeApi => {
                 // TODO: Call https://api.anthropic.com/v1/pricing endpoint
@@ -221,7 +232,7 @@ impl PricingService {
             // ap-northeast-1 = JPY, +10% premium
             (PricingProvider::AwsBedrock, "claude-3-5-sonnet") => ModelPricing {
                 model: "claude-3-5-sonnet".to_string(),
-                input_cost_per_1m: 2.10,  // USD for us-east-1
+                input_cost_per_1m: 2.10, // USD for us-east-1
                 output_cost_per_1m: 10.50,
                 currency: Currency::USD,
             },
@@ -238,7 +249,7 @@ impl PricingService {
             // southeastasia = SGD, +15% premium
             (PricingProvider::AzureFoundry, "claude-3-5-sonnet") => ModelPricing {
                 model: "claude-3-5-sonnet".to_string(),
-                input_cost_per_1m: 2.55,  // USD for eastus
+                input_cost_per_1m: 2.55, // USD for eastus
                 output_cost_per_1m: 12.75,
                 currency: Currency::USD,
             },
@@ -255,7 +266,7 @@ impl PricingService {
             // asia-east1 = SGD or JPY, +20% premium
             (PricingProvider::GcpModelGarden, "claude-3-5-sonnet") => ModelPricing {
                 model: "claude-3-5-sonnet".to_string(),
-                input_cost_per_1m: 1.80,  // USD for us-central1
+                input_cost_per_1m: 1.80, // USD for us-central1
                 output_cost_per_1m: 9.00,
                 currency: Currency::USD,
             },
@@ -280,29 +291,29 @@ impl PricingService {
     /// Non-cloud (Claude API) returns 1.0
     pub fn regional_multiplier(provider: PricingProvider, region: &str) -> f64 {
         match provider {
-            PricingProvider::ClaudeApi => 1.0,  // No regional variance
+            PricingProvider::ClaudeApi => 1.0, // No regional variance
             PricingProvider::AwsBedrock => {
                 match region {
-                    "us-east-1" | "us-west-2" => 1.0,  // Base pricing
-                    "eu-west-1" | "eu-central-1" => 1.15,  // +15% Europe premium
-                    "ap-northeast-1" | "ap-southeast-1" => 1.10,  // +10% Asia premium
-                    "ca-central-1" => 1.05,  // +5% Canada
-                    _ => 1.0,  // Unknown region, use base
+                    "us-east-1" | "us-west-2" => 1.0,            // Base pricing
+                    "eu-west-1" | "eu-central-1" => 1.15,        // +15% Europe premium
+                    "ap-northeast-1" | "ap-southeast-1" => 1.10, // +10% Asia premium
+                    "ca-central-1" => 1.05,                      // +5% Canada
+                    _ => 1.0,                                    // Unknown region, use base
                 }
             }
             PricingProvider::AzureFoundry => {
                 match region {
-                    "eastus" | "eastus2" | "westus" => 1.0,  // Base pricing
-                    "westeurope" | "northeurope" => 1.20,  // +20% Europe premium
-                    "southeastasia" | "eastasia" => 1.15,  // +15% Asia premium
+                    "eastus" | "eastus2" | "westus" => 1.0, // Base pricing
+                    "westeurope" | "northeurope" => 1.20,   // +20% Europe premium
+                    "southeastasia" | "eastasia" => 1.15,   // +15% Asia premium
                     _ => 1.0,
                 }
             }
             PricingProvider::GcpModelGarden => {
                 match region {
-                    "us-central1" | "us-east1" | "us-west1" => 1.0,  // Base pricing
-                    "europe-west1" | "europe-north1" => 1.18,  // +18% Europe premium
-                    "asia-east1" | "asia-southeast1" => 1.20,  // +20% Asia premium
+                    "us-central1" | "us-east1" | "us-west1" => 1.0, // Base pricing
+                    "europe-west1" | "europe-north1" => 1.18,       // +18% Europe premium
+                    "asia-east1" | "asia-southeast1" => 1.20,       // +20% Asia premium
                     _ => 1.0,
                 }
             }
@@ -323,30 +334,48 @@ mod tests {
     #[tokio::test]
     async fn test_fallback_pricing_claude_api() {
         let service = PricingService::new();
-        let pricing = service.get_model_pricing("claude-3-5-sonnet", PricingProvider::ClaudeApi).await.unwrap();
+        let pricing = service
+            .get_model_pricing("claude-3-5-sonnet", PricingProvider::ClaudeApi)
+            .await
+            .unwrap();
         assert_eq!(pricing.input_cost_per_1m, 3.00);
     }
 
     #[tokio::test]
     async fn test_bedrock_cheaper_than_api() {
         let service = PricingService::new();
-        let api_pricing = service.get_model_pricing("claude-3-5-sonnet", PricingProvider::ClaudeApi).await.unwrap();
-        let bedrock_pricing = service.get_model_pricing("claude-3-5-sonnet", PricingProvider::AwsBedrock).await.unwrap();
+        let api_pricing = service
+            .get_model_pricing("claude-3-5-sonnet", PricingProvider::ClaudeApi)
+            .await
+            .unwrap();
+        let bedrock_pricing = service
+            .get_model_pricing("claude-3-5-sonnet", PricingProvider::AwsBedrock)
+            .await
+            .unwrap();
         assert!(bedrock_pricing.input_cost_per_1m < api_pricing.input_cost_per_1m);
     }
 
     #[tokio::test]
     async fn test_gcp_cheapest() {
         let service = PricingService::new();
-        let api_pricing = service.get_model_pricing("claude-3-5-sonnet", PricingProvider::ClaudeApi).await.unwrap();
-        let gcp_pricing = service.get_model_pricing("claude-3-5-sonnet", PricingProvider::GcpModelGarden).await.unwrap();
+        let api_pricing = service
+            .get_model_pricing("claude-3-5-sonnet", PricingProvider::ClaudeApi)
+            .await
+            .unwrap();
+        let gcp_pricing = service
+            .get_model_pricing("claude-3-5-sonnet", PricingProvider::GcpModelGarden)
+            .await
+            .unwrap();
         assert!(gcp_pricing.input_cost_per_1m < api_pricing.input_cost_per_1m);
     }
 
     #[tokio::test]
     async fn test_all_providers() {
         let service = PricingService::new();
-        let all_providers = service.get_model_pricing_all_providers("claude-3-5-sonnet").await.unwrap();
+        let all_providers = service
+            .get_model_pricing_all_providers("claude-3-5-sonnet")
+            .await
+            .unwrap();
         assert_eq!(all_providers.len(), 4);
         assert!(all_providers.contains_key(&PricingProvider::ClaudeApi));
         assert!(all_providers.contains_key(&PricingProvider::AwsBedrock));

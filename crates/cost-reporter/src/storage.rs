@@ -1,7 +1,7 @@
 //! SQLite storage backend for persistent cost tracking
 
-use crate::types::{Operation, CostData, Session};
-use sqlx::sqlite::{SqlitePool, SqliteConnectOptions};
+use crate::types::{CostData, Operation, Session};
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
 use std::str::FromStr;
 
 #[derive(Clone, Debug)]
@@ -21,8 +21,7 @@ impl StorageBackend {
 
     /// Create SQLite backend with persistent storage
     pub async fn new(db_path: &str) -> anyhow::Result<Self> {
-        let options = SqliteConnectOptions::from_str(db_path)?
-            .create_if_missing(true);
+        let options = SqliteConnectOptions::from_str(db_path)?.create_if_missing(true);
 
         let pool = SqlitePool::connect_with(options).await?;
 
@@ -128,12 +127,19 @@ impl StorageBackend {
     }
 
     /// Save operation to storage
-    pub async fn save_operation(&self, operation: &Operation, cost: &CostData) -> anyhow::Result<()> {
+    pub async fn save_operation(
+        &self,
+        operation: &Operation,
+        cost: &CostData,
+    ) -> anyhow::Result<()> {
         if self.in_memory {
             return Ok(());
         }
 
-        let pool = self.pool.as_ref().ok_or(anyhow::anyhow!("No storage pool"))?;
+        let pool = self
+            .pool
+            .as_ref()
+            .ok_or(anyhow::anyhow!("No storage pool"))?;
 
         let tags = serde_json::to_string(&operation.tags)?;
         let file_source = operation.file_source.as_ref().map(|fs| format!("{:?}", fs));
@@ -174,7 +180,10 @@ impl StorageBackend {
             return Ok(());
         }
 
-        let pool = self.pool.as_ref().ok_or(anyhow::anyhow!("No storage pool"))?;
+        let pool = self
+            .pool
+            .as_ref()
+            .ok_or(anyhow::anyhow!("No storage pool"))?;
         let tags = serde_json::to_string(&session.tags)?;
         let operation_ids = serde_json::to_string(&session.operation_ids)?;
 
@@ -218,7 +227,10 @@ impl StorageBackend {
             return Ok(Vec::new());
         }
 
-        let pool = self.pool.as_ref().ok_or(anyhow::anyhow!("No storage pool"))?;
+        let pool = self
+            .pool
+            .as_ref()
+            .ok_or(anyhow::anyhow!("No storage pool"))?;
 
         let cutoff = chrono::Utc::now() - chrono::Duration::hours(hours as i64);
         let cutoff_str = cutoff.to_rfc3339();
@@ -247,7 +259,10 @@ impl StorageBackend {
             return Ok(Vec::new());
         }
 
-        let pool = self.pool.as_ref().ok_or(anyhow::anyhow!("No storage pool"))?;
+        let pool = self
+            .pool
+            .as_ref()
+            .ok_or(anyhow::anyhow!("No storage pool"))?;
 
         let _rows = sqlx::query(
             r#"

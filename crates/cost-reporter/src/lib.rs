@@ -8,26 +8,28 @@
 //! - MCP profiling (rank skills by cost)
 //! - SQLite persistence (local, private)
 
-pub mod types;
-pub mod cost_tracker;
-pub mod session;
-pub mod file_format_profiler;
-pub mod operation_profiler;
-pub mod mcp_profiler;
-pub mod storage;
 pub mod analyzer;
+pub mod audit;
+pub mod cost_tracker;
+pub mod file_format_profiler;
+pub mod mcp_profiler;
+pub mod operation_profiler;
 pub mod pricing_service;
 pub mod provider_integrations;
-pub mod audit;
+pub mod session;
+pub mod storage;
+pub mod types;
 
-pub use types::{Operation, OperationType, FileSource, Session, CostData, BillingPlan, Currency, PricingTier};
+pub use analyzer::CostAnalyzer;
+pub use audit::{AuditEvent, AuditEventType, AuditLogger};
 pub use cost_tracker::CostTracker;
+pub use pricing_service::PricingService;
+pub use provider_integrations::{ActualUsageData, IntegrationStatus, ProviderIntegration};
 pub use session::SessionManager;
 pub use storage::StorageBackend;
-pub use analyzer::CostAnalyzer;
-pub use pricing_service::PricingService;
-pub use provider_integrations::{ProviderIntegration, ActualUsageData, IntegrationStatus};
-pub use audit::{AuditLogger, AuditEvent, AuditEventType};
+pub use types::{
+    BillingPlan, CostData, Currency, FileSource, Operation, OperationType, PricingTier, Session,
+};
 
 #[derive(Debug, Clone)]
 pub struct CostReporter {
@@ -66,12 +68,19 @@ impl CostReporter {
     pub async fn end_session(&self, session_id: &str) -> anyhow::Result<serde_json::Value> {
         let mut tracker = self.tracker.lock().await;
         let session_summary = tracker.finalize_session(session_id)?;
-        self.storage.update_session_summary(session_id, &session_summary).await?;
+        self.storage
+            .update_session_summary(session_id, &session_summary)
+            .await?;
         Ok(session_summary)
     }
 
     /// Tag current session
-    pub async fn tag_session(&self, session_id: &str, key: String, value: String) -> anyhow::Result<()> {
+    pub async fn tag_session(
+        &self,
+        session_id: &str,
+        key: String,
+        value: String,
+    ) -> anyhow::Result<()> {
         let mut tracker = self.tracker.lock().await;
         tracker.tag_session(session_id, key, value)?;
         Ok(())
@@ -115,7 +124,11 @@ impl CostReporter {
     /// Compare model costs for informed model selection
     /// Returns cost differences across all available models
     /// CRITICAL: Users see cost impact BEFORE switching models
-    pub async fn compare_models(&self, tokens_input: u32, tokens_output: u32) -> anyhow::Result<serde_json::Value> {
+    pub async fn compare_models(
+        &self,
+        tokens_input: u32,
+        tokens_output: u32,
+    ) -> anyhow::Result<serde_json::Value> {
         let analyzer = CostAnalyzer::new();
         let comparison = analyzer.compare_model_costs(tokens_input, tokens_output);
         Ok(serde_json::to_value(comparison)?)

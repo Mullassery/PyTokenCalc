@@ -1,15 +1,14 @@
 //! CostReporter Python FFI (PyO3)
 //! Exposes Rust core to Python as native extension module
 
+use cost_reporter::{CostReporter, FileSource, Operation, OperationType};
+use once_cell::sync::Lazy;
 use pyo3::prelude::*;
-use cost_reporter::{CostReporter, Operation, OperationType, FileSource};
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use once_cell::sync::Lazy;
 
-static TOKIO_RUNTIME: Lazy<tokio::runtime::Runtime> = Lazy::new(|| {
-    tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime")
-});
+static TOKIO_RUNTIME: Lazy<tokio::runtime::Runtime> =
+    Lazy::new(|| tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime"));
 
 /// Python wrapper for CostReporter
 #[pyclass]
@@ -22,9 +21,9 @@ impl PyCostAudit {
     /// Initialize CostReporter with SQLite database
     #[new]
     pub fn new(db_path: &str) -> PyResult<Self> {
-        let reporter = TOKIO_RUNTIME.block_on(async {
-            CostReporter::new(db_path).await
-        }).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
+        let reporter = TOKIO_RUNTIME
+            .block_on(async { CostReporter::new(db_path).await })
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
 
         Ok(Self {
             reporter: Arc::new(Mutex::new(reporter)),
@@ -107,10 +106,12 @@ impl PyCostAudit {
             };
         }
 
-        let cost_data = TOKIO_RUNTIME.block_on(async {
-            let reporter = self.reporter.lock().await;
-            reporter.track_operation(op).await
-        }).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
+        let cost_data = TOKIO_RUNTIME
+            .block_on(async {
+                let reporter = self.reporter.lock().await;
+                reporter.track_operation(op).await
+            })
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
 
         let result = serde_json::json!({
             "operation_id": cost_data.operation_id,
@@ -122,104 +123,140 @@ impl PyCostAudit {
             "output_cost": cost_data.output_cost,
             "pricing_source": cost_data.pricing_source,
         });
-        Ok(serde_json::to_string(&result).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?)
+        Ok(serde_json::to_string(&result)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?)
     }
 
     /// Start a session
     pub fn start_session(&self, session_name: Option<&str>) -> PyResult<String> {
-        TOKIO_RUNTIME.block_on(async {
-            let reporter = self.reporter.lock().await;
-            reporter.start_session(session_name.map(|s| s.to_string())).await
-        }).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))
+        TOKIO_RUNTIME
+            .block_on(async {
+                let reporter = self.reporter.lock().await;
+                reporter
+                    .start_session(session_name.map(|s| s.to_string()))
+                    .await
+            })
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))
     }
 
     /// End a session and get summary
     pub fn end_session(&self, session_id: &str) -> PyResult<String> {
-        let result = TOKIO_RUNTIME.block_on(async {
-            let reporter = self.reporter.lock().await;
-            reporter.end_session(session_id).await
-        }).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
-        Ok(serde_json::to_string(&result).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?)
+        let result = TOKIO_RUNTIME
+            .block_on(async {
+                let reporter = self.reporter.lock().await;
+                reporter.end_session(session_id).await
+            })
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
+        Ok(serde_json::to_string(&result)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?)
     }
 
     /// Tag a session
     pub fn tag_session(&self, session_id: &str, key: &str, value: &str) -> PyResult<()> {
-        TOKIO_RUNTIME.block_on(async {
-            let reporter = self.reporter.lock().await;
-            reporter.tag_session(session_id, key.to_string(), value.to_string()).await
-        }).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))
+        TOKIO_RUNTIME
+            .block_on(async {
+                let reporter = self.reporter.lock().await;
+                reporter
+                    .tag_session(session_id, key.to_string(), value.to_string())
+                    .await
+            })
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))
     }
 
     /// Analyze today's costs
     pub fn analyze_daily(&self) -> PyResult<String> {
-        let result = TOKIO_RUNTIME.block_on(async {
-            let reporter = self.reporter.lock().await;
-            reporter.analyze_daily().await
-        }).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
-        Ok(serde_json::to_string(&result).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?)
+        let result = TOKIO_RUNTIME
+            .block_on(async {
+                let reporter = self.reporter.lock().await;
+                reporter.analyze_daily().await
+            })
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
+        Ok(serde_json::to_string(&result)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?)
     }
 
     /// Analyze a session's costs
     pub fn analyze_session(&self, session_id: &str) -> PyResult<String> {
-        let result = TOKIO_RUNTIME.block_on(async {
-            let reporter = self.reporter.lock().await;
-            reporter.analyze_session(session_id).await
-        }).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
-        Ok(serde_json::to_string(&result).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?)
+        let result = TOKIO_RUNTIME
+            .block_on(async {
+                let reporter = self.reporter.lock().await;
+                reporter.analyze_session(session_id).await
+            })
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
+        Ok(serde_json::to_string(&result)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?)
     }
 
     /// Analyze MCP costs
     pub fn analyze_mcp_costs(&self) -> PyResult<String> {
-        let result = TOKIO_RUNTIME.block_on(async {
-            let reporter = self.reporter.lock().await;
-            reporter.analyze_mcp_costs().await
-        }).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
-        Ok(serde_json::to_string(&result).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?)
+        let result = TOKIO_RUNTIME
+            .block_on(async {
+                let reporter = self.reporter.lock().await;
+                reporter.analyze_mcp_costs().await
+            })
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
+        Ok(serde_json::to_string(&result)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?)
     }
 
     /// Get optimization recommendations
     pub fn get_recommendations(&self) -> PyResult<String> {
-        let result = TOKIO_RUNTIME.block_on(async {
-            let reporter = self.reporter.lock().await;
-            reporter.get_recommendations().await
-        }).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
-        Ok(serde_json::to_string(&result).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?)
+        let result = TOKIO_RUNTIME
+            .block_on(async {
+                let reporter = self.reporter.lock().await;
+                reporter.get_recommendations().await
+            })
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
+        Ok(serde_json::to_string(&result)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?)
     }
 
     /// Detect spending anomalies
     pub fn detect_anomalies(&self) -> PyResult<String> {
-        let result = TOKIO_RUNTIME.block_on(async {
-            let reporter = self.reporter.lock().await;
-            reporter.detect_anomalies().await
-        }).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
-        Ok(serde_json::to_string(&result).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?)
+        let result = TOKIO_RUNTIME
+            .block_on(async {
+                let reporter = self.reporter.lock().await;
+                reporter.detect_anomalies().await
+            })
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
+        Ok(serde_json::to_string(&result)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?)
     }
 
     /// Compare model costs for informed model selection
     pub fn compare_models(&self, tokens_input: u32, tokens_output: u32) -> PyResult<String> {
-        let result = TOKIO_RUNTIME.block_on(async {
-            let reporter = self.reporter.lock().await;
-            reporter.compare_models(tokens_input, tokens_output).await
-        }).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
-        Ok(serde_json::to_string(&result).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?)
+        let result = TOKIO_RUNTIME
+            .block_on(async {
+                let reporter = self.reporter.lock().await;
+                reporter.compare_models(tokens_input, tokens_output).await
+            })
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
+        Ok(serde_json::to_string(&result)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?)
     }
 
     /// Forecast quarterly spending with pricing disclaimer
     pub fn forecast_quarterly(&self) -> PyResult<String> {
-        let result = TOKIO_RUNTIME.block_on(async {
-            let reporter = self.reporter.lock().await;
-            reporter.forecast_quarterly().await
-        }).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
-        Ok(serde_json::to_string(&result).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?)
+        let result = TOKIO_RUNTIME
+            .block_on(async {
+                let reporter = self.reporter.lock().await;
+                reporter.forecast_quarterly().await
+            })
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
+        Ok(serde_json::to_string(&result)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?)
     }
 
     /// Compare billing plans (Pro vs Max vs Enterprise vs API)
     pub fn compare_billing_plans(&self) -> PyResult<String> {
-        let result = TOKIO_RUNTIME.block_on(async {
-            let reporter = self.reporter.lock().await;
-            reporter.compare_billing_plans().await
-        }).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
-        Ok(serde_json::to_string(&result).map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?)
+        let result = TOKIO_RUNTIME
+            .block_on(async {
+                let reporter = self.reporter.lock().await;
+                reporter.compare_billing_plans().await
+            })
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
+        Ok(serde_json::to_string(&result)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?)
     }
 }
 

@@ -10,8 +10,8 @@
 //! Each provider's actual data becomes ground truth for cost reporting
 
 use crate::pricing_service::PricingProvider;
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 /// Actual usage data from provider (not estimate)
 #[derive(Debug, Clone)]
@@ -206,7 +206,11 @@ impl ProviderIntegration {
         for region in &["us-east-1", "eu-west-1", "ap-northeast-1"] {
             match Self::fetch_bedrock_actuals(region, "*").await {
                 Ok(mut actuals) => {
-                    tracing::info!("✅ AWS Bedrock ({}): fetched {} records", region, actuals.len());
+                    tracing::info!(
+                        "✅ AWS Bedrock ({}): fetched {} records",
+                        region,
+                        actuals.len()
+                    );
                     all_actuals.append(&mut actuals);
                 }
                 Err(e) => tracing::debug!("AWS Bedrock ({}): {}", region, e),

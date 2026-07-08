@@ -5,7 +5,7 @@
 //! User thinks: "get_user MCP = 100 tokens"
 //! Reality: MCP reads 5k docs + 2k HTML response = 7.1k tokens (71x overhead!)
 
-use crate::types::{Operation, McpProfile, McpOverhead};
+use crate::types::{McpOverhead, McpProfile, Operation};
 use std::collections::HashMap;
 
 pub struct McpProfiler {
@@ -74,10 +74,7 @@ impl McpProfiler {
     /// Get top MCPs by overhead
     pub fn top_overhead_mcps(&self, limit: usize) -> Vec<McpCallMetrics> {
         let mut sorted: Vec<_> = self.profiles.values().cloned().collect();
-        sorted.sort_by(|a, b| {
-            b.total_overhead_tokens
-                .cmp(&a.total_overhead_tokens)
-        });
+        sorted.sort_by(|a, b| b.total_overhead_tokens.cmp(&a.total_overhead_tokens));
         sorted.into_iter().take(limit).collect()
     }
 
