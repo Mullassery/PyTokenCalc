@@ -5,7 +5,7 @@ Demonstrates provider-specific token calculation for 20+ APIs.
 
 import pytest
 from datetime import datetime
-from pycostaudit import (
+from pytokencalc import (
     UsageData,
     CostCalculatorV6,
     ClaudeTokenModel,

@@ -7,11 +7,11 @@ import tempfile
 import os
 from datetime import datetime, timedelta
 
-from pycostaudit.database import (
+from pytokencalc.database import (
     DatabaseManager, AlertConfiguration, TimeSeriesDataPoint,
     ForecastCache, AnomalyRecord, RecommendationRecord
 )
-from pycostaudit.backend_service import BackendService
+from pytokencalc.backend_service import BackendService
 
 
 @pytest.fixture

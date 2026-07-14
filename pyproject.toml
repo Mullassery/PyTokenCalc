@@ -4,8 +4,8 @@ build-backend = "maturin.build"
 
 [project]
 name = "pytokencalc"
-version = "0.5.0"
-description = "Multi-API LLM cost calculation core. Unified cost tracking across 20+ cloud providers and 10+ open-source APIs. The cost foundation for OpenAnchor and autonomous agent frameworks."
+version = "0.7.0"
+description = "Multi-provider LLM token counter & cost calculator. Unified token counting and cost calculation across 20+ cloud providers and 10+ open-source APIs."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
@@ -13,19 +13,19 @@ authors = [{ name = "Georgi Mammen Mullassery", email = "mullassery@gmail.com" }
 maintainers = [{ name = "Georgi Mammen Mullassery", email = "mullassery@gmail.com" }]
 keywords = [
     "llm",
-    "cost-calculation",
-    "cost-tracking",
     "token-counting",
+    "cost-calculation",
     "multi-provider",
-    "budget-enforcement",
-    "anthropic",
-    "openai",
-    "google",
+    "gpt",
+    "claude",
+    "gemini",
+    "llama",
+    "mistral",
     "groq",
     "deepinfra",
-    "api-costs",
+    "token-counter",
+    "tokenizer",
     "ai-cost-management",
-    "usage-tracking",
     "openanchor"
 ]
 classifiers = [
@@ -86,18 +86,18 @@ postgres = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Mullassery/PyCostAudit"
-Repository = "https://github.com/Mullassery/PyCostAudit"
-"Bug Tracker" = "https://github.com/Mullassery/PyCostAudit/issues"
-Documentation = "https://github.com/Mullassery/PyCostAudit#readme"
-Changelog = "https://github.com/Mullassery/PyCostAudit/releases"
-"Source Code" = "https://github.com/Mullassery/PyCostAudit/tree/main"
-Discussions = "https://github.com/Mullassery/PyCostAudit/discussions"
+Homepage = "https://github.com/Mullassery/PyTokenCalc"
+Repository = "https://github.com/Mullassery/PyTokenCalc"
+"Bug Tracker" = "https://github.com/Mullassery/PyTokenCalc/issues"
+Documentation = "https://github.com/Mullassery/PyTokenCalc#readme"
+Changelog = "https://github.com/Mullassery/PyTokenCalc/releases"
+"Source Code" = "https://github.com/Mullassery/PyTokenCalc/tree/main"
+Discussions = "https://github.com/Mullassery/PyTokenCalc/discussions"
 
 [tool.maturin]
 module-name = "pytokencalc._core"
-manifest-path = "python/Cargo.toml"
-python-source = "python/src"
+manifest-path = "Cargo.toml"
+python-source = "."
 
 [tool.black]
 line-length = 100

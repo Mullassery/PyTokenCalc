@@ -13,8 +13,8 @@ Run: python examples/demo_claude_code_tracking.py
 """
 
 from datetime import datetime, timedelta
-from pycostaudit.cost_model import CostTracker, Cost
-from pycostaudit.alerting import AlertEngine, AlertType, AlertSeverity, SlackAlertChannel
+from pytokencalc.cost_model import CostTracker, Cost
+from pytokencalc.alerting import AlertEngine, AlertType, AlertSeverity, SlackAlertChannel
 import random
 
 

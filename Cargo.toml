@@ -1,13 +1,13 @@
 [workspace]
-members = ["crates/cost-reporter", "python"]
+members = ["python"]
 resolver = "2"
 
 [workspace.package]
-version = "0.8.5"
+version = "0.7.0"
 edition = "2021"
 authors = ["Georgi Mammen Mullassery <mullassery@gmail.com>"]
 license = "MIT"
-repository = "https://github.com/Mullassery/PyCostAudit"
+repository = "https://github.com/Mullassery/PyTokenCalc"
 
 [workspace.dependencies]
 pyo3 = { version = "0.22", features = ["extension-module"] }

@@ -7,7 +7,7 @@ Tests the complete flow: operation tracking → cost calculation → analysis.
 import tempfile
 import json
 from pathlib import Path
-from pycostaudit import PyCostAudit
+from pytokencalc import PyCostAudit
 
 
 def test_basic_cost_tracking():

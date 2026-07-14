@@ -6,7 +6,7 @@ Shows real-time cost tracking for Claude Code operations
 
 import sys
 from datetime import datetime, timedelta
-import pycostaudit
+import pytokencalc
 
 def print_header():
     """Print application header"""

@@ -4,7 +4,7 @@ Unit tests for cost model and provider implementations.
 
 import pytest
 from datetime import datetime
-from pycostaudit.cost_model import (
+from pytokencalc.cost_model import (
     Cost,
     OpenAIProvider,
     BedrockProvider,
