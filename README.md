@@ -1,113 +1,135 @@
-# PyTokenCalc v0.5: Multi-Provider LLM Token Cost Calculator
+# PyTokenCalc v0.6: Multi-Provider LLM Token Calculator
 
 [![PyPI version](https://badge.fury.io/py/pytokencalc.svg)](https://pypi.org/project/pytokencalc/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![GitHub](https://img.shields.io/badge/GitHub-PyTokenCalc-black.svg)](https://github.com/Mullassery/PyTokenCalc)
 
-**Unified LLM cost calculation across 20+ cloud providers and 10+ open-source APIs.**
+**Unified token counting and cost calculation across 20+ cloud providers and 10+ open-source APIs.**
 
-PyTokenCalc is the cost calculation core that powers [OpenAnchor](https://github.com/Mullassery/openanchor) (cost optimization middleware) and provides accurate, real-time cost tracking for teams using multiple LLM APIs.
+PyTokenCalc handles the complexity of multi-provider LLM token accounting:
+- **Different providers count tokens differently** (Groq Llama vs DeepInfra Llama = different token counts)
+- **Same model, different pricing** across providers (4-96x cost variance)
+- **Provider-specific token models** (Claude simple, GPT-4o dual-token, Gemini character-based, Groq speed-tiered, etc.)
+
+This is the token counting core that powers [OpenAnchor](https://github.com/Mullassery/openanchor) (cost optimization middleware).
 
 ---
 
-## What It Does (v0.5 Scope)
+## What It Does (v0.6 Scope)
 
-### ✅ Cost Calculation (Core)
-Calculate the exact cost for any LLM API call:
+### ✅ Multi-Provider Token Counting (Core v0.6)
+Handle provider-specific token counting for any LLM:
 ```python
-from pycostaudit import CostCalculator
+from pytokencalc import UsageData, CostCalculatorV6
 
-calc = CostCalculator()
-cost = calc.calculate(
+calc = CostCalculatorV6()
+
+# Claude: Simple input/output tokens
+usage = UsageData(
     provider="anthropic",
     model="claude-3-5-sonnet",
-    input_tokens=1000,
-    output_tokens=250
+    input_tokens=1_000_000,
+    output_tokens=500_000
 )
-# Returns: 0.00825 (USD)
-```
+cost = calc.calculate(usage)  # $10.50
 
-### ✅ Cost Tracking (Core)
-Track operations and aggregate costs by provider, model, or task type:
-```python
-from pycostaudit import CostDatabase
-
-db = CostDatabase()
-db.track(
-    provider="anthropic",
-    model="claude-3-5-sonnet",
-    input_tokens=1000,
-    output_tokens=250,
-    task_type="document_qa"
+# GPT-4o: Dual token model (full + mini)
+usage = UsageData(
+    provider="openai",
+    model="gpt-4o",
+    input_tokens=1_000_000,
+    input_mini_tokens=500_000,  # Different rate
+    output_tokens=250_000,
+    output_mini_tokens=100_000
 )
+cost = calc.calculate(usage)  # $5.56
 
-report = db.report(period="day")
-# {"by_provider": {...}, "by_model": {...}, "total": 0.00825}
+# Gemini: Character-based (not token-based!)
+usage = UsageData(
+    provider="google",
+    model="gemini-2-flash",
+    input_characters=1_000_000_000,  # 1B chars
+    output_characters=500_000_000
+)
+cost = calc.calculate(usage)  # $1.125
+
+# Groq: Speed-tiered pricing
+usage = UsageData(
+    provider="groq",
+    model="llama-70b",
+    input_tokens=1_000_000,
+    output_tokens=500_000,
+    speed_tier="fast"  # 2x base cost
+)
+cost = calc.calculate(usage)
 ```
 
-### ✅ Provider Comparison (Core)
-Compare costs across providers for the same model:
+### ✅ Token Accounting (Core v0.6)
+Track tokens consumed per provider, model, task:
 ```python
-from pycostaudit import PricingManager
+# After calling calculate() multiple times:
+breakdown = calc.cost_by_provider()
+# {"anthropic": $X, "openai": $Y, "google": $Z}
 
-pricing = PricingManager()
-providers = pricing.compare_model("llama-70b")
-# Shows Groq ($0.59/M), DeepInfra ($0.23/M), Together ($0.30/M)
+breakdown = calc.cost_by_model()
+# {"claude-3-5-sonnet": $X, "gpt-4o": $Y, "gemini-2-flash": $Z}
+
+breakdown = calc.cost_by_task_type()
+# {"analysis": $X, "coding": $Y, "inference": $Z}
+
+export = calc.export()
+# Audit trail with all token counts per operation
 ```
 
-### ✅ Budget Enforcement (v0.5+ Safety Feature)
-Hard limits to prevent cost overruns:
+### ✅ Provider-Specific Token Models (Core v0.6)
+Each provider has its own token counting logic:
 ```python
-from pycostaudit import set_budget_limit, BudgetPeriod
+from pytokencalc import (
+    ClaudeTokenModel,      # Simple tokens
+    GPT4oTokenModel,       # Full + mini tokens
+    GeminiCharacterModel,  # Character-based
+    GroqSpeedTieredModel,  # Speed affects pricing
+    DeepInfraTokenModel,   # Open-source wrapper
+    TogetherAITokenModel   # Open-source alternative
+)
+```
+
+### ✅ Budget Enforcement (Safety Feature)
+Hard limits to prevent runaway costs:
+```python
+from pytokencalc import set_budget_limit, BudgetPeriod
 
 set_budget_limit(
     max_spend=100.00,  # $100/day hard cap
     period=BudgetPeriod.DAILY
 )
-# Raises BudgetExceededError if limit exceeded
 ```
 
-### ✅ Real-Time Pricing Updates
-Daily pricing crawler keeps costs accurate across 20+ providers:
+### ✅ Real-Time Pricing (v0.5+ Compatibility)
+Daily pricing updates for accurate cost calculations:
 ```python
+from pytokencalc import PricingManager
+
 pricing = PricingManager()
-latest = pricing.get_current_rate(provider="anthropic", model="claude-3-5-sonnet")
-# Updated within 4 hours of provider price changes
+latest = pricing.get_current_rate(
+    provider="anthropic",
+    model="claude-3-5-sonnet"
+)
 ```
 
 ---
 
-## What It Does NOT (v0.2+ Scope)
+## What It Does NOT
 
-### ❌ Forecasting
-- No ML-based cost prediction
-- No time-series analysis
-- No confidence intervals
-- **Defer to:** v0.2
+PyTokenCalc focuses on **token counting accuracy**. Out of scope:
 
-### ❌ Dashboards
-- No web UI
-- No visualization
-- No interactive charts
-- **Defer to:** v0.2
-
-### ❌ Compliance/Audit
-- No SOC2 tracking
-- No HIPAA/GDPR compliance
-- No audit logs
-- **Defer to:** v0.2+
-
-### ❌ Recommendations
-- No model switching suggestions
-- No cost reduction recommendations
-- **This is [OpenAnchor](https://github.com/Mullassery/openanchor)'s job**
-
-### ❌ Advanced Features
-- No RBAC/team management
-- No alerting/webhooks
-- No reporting/exports
-- **Defer to:** v0.2+
+- ❌ **Optimization recommendations** — That's [OpenAnchor](https://github.com/Mullassery/openanchor)'s job
+- ❌ **Dashboards/UI** — We're a library, not a service
+- ❌ **Forecasting/predictions** — We track actual consumption, not predictions
+- ❌ **Compliance/audit** — Use your audit system
+- ❌ **Team management/RBAC** — Use your platform's auth
+- ❌ **Alerting** — Implement in your monitoring layer
 
 ---
 
@@ -120,27 +142,64 @@ pip install pytokencalc
 uv pip install pytokencalc
 ```
 
-### Basic Usage
+### Basic Usage (v0.6 Multi-Provider)
+
 ```python
-from pycostaudit import CostCalculator, CostDatabase
+from pytokencalc import UsageData, CostCalculatorV6
 
-# Calculate a single cost
-calc = CostCalculator()
-cost = calc.calculate("anthropic", "claude-3-5-sonnet", 1000, 250)
-print(f"Cost: ${cost:.4f}")
+calc = CostCalculatorV6()
 
-# Track operations
-db = CostDatabase()
-db.track(
+# Track Claude tokens
+claude = UsageData(
     provider="anthropic",
     model="claude-3-5-sonnet",
-    input_tokens=1000,
-    output_tokens=250
+    input_tokens=1_000_000,
+    output_tokens=500_000
 )
+cost = calc.calculate(claude)
+print(f"Claude cost: ${cost:.4f}")
 
-# Get daily report
+# Track GPT-4o with mini tokens
+gpt = UsageData(
+    provider="openai",
+    model="gpt-4o",
+    input_tokens=1_000_000,
+    input_mini_tokens=500_000,
+    output_tokens=250_000
+)
+cost = calc.calculate(gpt)
+print(f"GPT-4o cost: ${cost:.4f}")
+
+# Track Gemini (character-based)
+gemini = UsageData(
+    provider="google",
+    model="gemini-2-flash",
+    input_characters=1_000_000_000,
+    output_characters=500_000_000
+)
+cost = calc.calculate(gemini)
+
+# Get breakdown by provider
+breakdown = calc.cost_by_provider()
+print(f"Breakdown: {breakdown}")
+
+# Export audit trail
+export = calc.export()
+```
+
+### Legacy Usage (v0.5 Compatibility)
+
+```python
+from pytokencalc import CostCalculator, CostDatabase
+
+# Old API still works
+calc = CostCalculator()
+cost = calc.calculate("anthropic", "claude-3-5-sonnet", 1000, 250)
+
+# Track with database
+db = CostDatabase()
+db.track("anthropic", "claude-3-5-sonnet", 1000, 250)
 report = db.report(period="day")
-print(f"Daily spend: ${report['total']:.2f}")
 ```
 
 ### With OpenAnchor
@@ -278,6 +337,20 @@ except BudgetExceededError as e:
 ---
 
 ## Version History
+
+### v0.6.0 (July 2026) - Multi-Provider Token Models
+**NEW: Provider-specific token counting for 20+ APIs**
+- ClaudeTokenModel: Simple input/output token rates
+- GPT4oTokenModel: Dual token model (full + mini)
+- GeminiCharacterModel: Character-based (not token-based)
+- GroqSpeedTieredModel: Speed tier affects token pricing
+- DeepInfraTokenModel: Open-source wrapper
+- TogetherAITokenModel: Open-source alternative
+- CostCalculatorV6: Multi-provider token calculator
+- CostModelRegistry: Extensible provider system
+- UsageData: Provider-specific token fields (characters, mini-tokens, speed tiers, etc.)
+- **Focus:** Token counting accuracy, not cost estimation
+- **Extensibility:** Add new providers without core changes
 
 ### v0.5.0 (July 2026) - Multi-Provider Launch
 **Renamed: PyCostAudit → PyTokenCalc (reflects multi-LLM focus)**
