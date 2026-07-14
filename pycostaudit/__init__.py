@@ -1,21 +1,37 @@
 """
-PyCostAudit - Real-time LLM cost tracking and optimization
-Tracks Claude Code costs across 15+ hidden dimensions and provides actionable recommendations.
+PyCostAudit-Multi v0.5: Multi-API Cost Calculation Core
+
+Unified cost calculation and tracking across 20+ cloud providers and 10+ open-source APIs.
+This is the cost calculation core that powers OpenAnchor.
+
+v0.5 Scope (Cost Calculation Only):
+- CostCalculator: Calculate cost for any provider/model/tokens
+- CostDatabase: Track operations and aggregate costs
+- PricingManager: Provider pricing + daily updates
+- Budget Enforcement: Hard limits to prevent cost overruns
+
+NOT included in v0.5 (deferred to v0.2+):
+- Forecasting/ML predictions
+- Dashboards/web UI
+- Compliance/audit tracking
+- Recommendations (that's OpenAnchor's job)
+- Advanced reporting/analytics
+
+Documentation: https://github.com/Mullassery/PyCostAudit
+OpenAnchor (uses this): https://github.com/Mullassery/openanchor
 """
 
-__version__ = "0.9.0"
+__version__ = "0.5.0"
 __author__ = "Georgi Mammen Mullassery"
 
-from . import (
-    advanced_filters,
-    custom_report_builder,
-    detailed_token_classifier,
-    detailed_recommendations,
-    interactive_guide,
-    user_context,
-)
+# Core cost calculation classes
+from .cost_calculator import CostCalculator
+from .cost_model import Cost, ProviderType
+from .pricing_manager import PricingManager
+from .database import DatabaseManager
+from .persistence import CostDatabase
 
-# CRITICAL: Hard budget enforcement (prevents runaway costs)
+# Safety feature: Hard budget enforcement
 from ._budget_enforcement import (
     BudgetEnforcer,
     BudgetLimit,
@@ -28,13 +44,14 @@ from ._budget_enforcement import (
 )
 
 __all__ = [
-    "advanced_filters",
-    "custom_report_builder",
-    "detailed_token_classifier",
-    "detailed_recommendations",
-    "interactive_guide",
-    "user_context",
-    # Budget enforcement (v1.3.0+)
+    # Core v0.5
+    "CostCalculator",
+    "Cost",
+    "ProviderType",
+    "PricingManager",
+    "DatabaseManager",
+    "CostDatabase",
+    # Budget enforcement (safety feature)
     "BudgetEnforcer",
     "BudgetLimit",
     "BudgetStatus",
