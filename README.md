@@ -105,14 +105,16 @@ for result in results:
 
 ## Installation
 
-### Basic (Local Tokenizers Only)
+### For Users
+
+**Basic (Local Tokenizers Only)**
 ```bash
 pip install pytokencalc
 ```
 
 This gives you token counting for OpenAI GPT and Llama/Mistral models (covers 70% of use cases).
 
-### Full (Recommended)
+**Full (Recommended)**
 ```bash
 pip install "pytokencalc[tokenizers]"
 ```
@@ -121,6 +123,29 @@ Installs optional dependencies for broader model support:
 - `tiktoken` — OpenAI GPT models
 - `transformers` — Llama, Mistral, and 1000+ HuggingFace models
 - `sentencepiece` — Additional model support
+
+### For Developers
+
+```bash
+# Clone the repository
+git clone https://github.com/Mullassery/pytokencalc.git
+cd pytokencalc
+
+# Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install in development mode with dev dependencies
+pip install -e ".[dev,tokenizers]"
+
+# Run tests
+pytest tests/
+make test    # or use Makefile
+```
+
+**Requirements:**
+- Python 3.9+
+- pip or uv
 
 ---
 
