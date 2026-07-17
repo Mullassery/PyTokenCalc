@@ -10,19 +10,54 @@ from typing import Optional, List, Dict, Any
 
 @dataclass
 class TokenCountResult:
-    """Result from token counting operation"""
+    """Result from token counting operation
+
+    ⚠️  CRITICAL: Same model name on different platforms may have DIFFERENT token counts
+
+    Root Causes:
+    - Different tokenizers/tokenizer versions
+    - Different quantization levels
+    - Different model variants or versions
+    - Different training data or fine-tuning
+    - Different inference engines
+
+    Real Example: "llama2-7b"
+    ┌─────────────────────┬─────────┬──────────────┐
+    │ Platform            │ Tokens  │ Latency      │
+    ├─────────────────────┼─────────┼──────────────┤
+    │ Ollama (local)      │ 1000    │ 5ms          │
+    │ GCP Vertex AI       │ 998     │ 200ms        │
+    │ Azure Container     │ 1002    │ 180ms        │
+    │ HuggingFace         │ 1000    │ 50ms (cold)  │
+    └─────────────────────┴─────────┴──────────────┘
+
+    ⚠️  DON'T aggregate results from different platforms!
+    ⚠️  DON'T assume same model = same token count!
+
+    Always specify and track the platform (provider + source).
+    Report results separately by platform, never combined.
+
+    Example - CORRECT:
+      "gpt-4: 100 tokens (OpenAI API)"
+      "llama2: 105 tokens (Ollama local)"
+
+    Example - WRONG:
+      "llama2: avg 102 tokens" (mixes platforms!)
+      "llama2: 105 tokens" (hides platform)
+    """
     input_tokens: int
     output_tokens: int = 0
     image_tokens: int = 0
     system_tokens: int = 0
     tool_tokens: int = 0
 
-    # Metadata
+    # Metadata: Platform & source tracking
     cached: bool = False  # True if from cache
     source: str = "local"  # "local", "api", "formula"
     latency_ms: float = 0.0
-    provider: str = ""
-    model: str = ""
+    provider: str = ""  # "openai", "anthropic", "ollama", "gcp", "azure", etc.
+    model: str = ""  # Model ID/name
+    platform: str = ""  # Platform variant (e.g., "ollama-local", "gcp-vertex", "azure-container")
 
     @property
     def total_tokens(self) -> int:

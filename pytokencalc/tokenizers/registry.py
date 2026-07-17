@@ -222,6 +222,53 @@ class TokenCounterRegistry:
             models.extend(counter.supported_models)
         return models
 
+    def validate_platform_consistency(self, results: List[TokenCountResult]) -> Dict[str, Any]:
+        """Validate that results don't accidentally mix platforms
+
+        Same model on different platforms (Ollama, GCP, Azure) may have
+        different token counts. This validator warns when results might be
+        accidentally mixed or aggregated.
+
+        Returns:
+            {
+                "consistent": bool,
+                "providers": [list of providers],
+                "platforms": [list of platforms],
+                "warnings": [list of warnings if mixing detected]
+            }
+        """
+        if not results:
+            return {
+                "consistent": True,
+                "providers": [],
+                "platforms": [],
+                "warnings": [],
+            }
+
+        providers = set(r.provider for r in results)
+        models = set(r.model for r in results)
+        platforms = set((r.provider, r.platform or r.provider) for r in results)
+
+        warnings = []
+
+        # Warn if same model appears on different platforms
+        for model in models:
+            model_results = [r for r in results if r.model == model]
+            model_providers = set(r.provider for r in model_results)
+
+            if len(model_providers) > 1:
+                warnings.append(
+                    f"Model '{model}' appears on multiple platforms: {model_providers}. "
+                    f"Token counts may differ. Keep results separate and don't aggregate."
+                )
+
+        return {
+            "consistent": len(warnings) == 0,
+            "providers": sorted(list(providers)),
+            "platforms": sorted(list(str(p) for p in platforms)),
+            "warnings": warnings,
+        }
+
     def get_info(self) -> Dict[str, Any]:
         """Get info about all registered counters"""
         return {

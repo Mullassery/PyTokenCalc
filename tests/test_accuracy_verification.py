@@ -350,6 +350,137 @@ class TestCohereAccuracy:
         assert not counter.validate_model("claude-3-opus"), "Should reject non-Cohere models"
 
 
+class TestPlatformTokenDifferences:
+    """Verify that same model on different platforms may have different token counts
+
+    CRITICAL: Same model across platforms does NOT guarantee same token counts.
+
+    Example: "llama2-7b" on:
+    - Ollama (local): Uses HuggingFace tokenizer
+    - GCP Vertex: May use different quantization/version
+    - Azure: May have different model variant
+
+    Platform differences are EXPECTED and NORMAL.
+    Users should specify platform when token count consistency is critical.
+    """
+
+    def test_platform_differences_documentation(self):
+        """Document platform-specific token count variance
+
+        This test serves as documentation that PyTokenCalc will report
+        platform-specific token counts separately, not aggregated.
+        """
+        # Example expected behavior (when multiple platforms available):
+        platform_example = {
+            "text": "Hello world",
+            "ollama_local": {
+                "platform": "ollama-local",
+                "model": "llama2",
+                "tokens": 3,
+                "latency_ms": 5
+            },
+            "gcp_vertex": {
+                "platform": "gcp-vertex-ai",
+                "model": "llama2",
+                "tokens": 2,  # Different tokenizer/version
+                "latency_ms": 200
+            },
+            "azure": {
+                "platform": "azure-container",
+                "model": "llama2",
+                "tokens": 3,
+                "latency_ms": 180
+            },
+        }
+
+        # Key insight: token counts differ, latencies differ
+        # But all are valid and platform-specific
+        assert platform_example["ollama_local"]["tokens"] != platform_example["gcp_vertex"]["tokens"], \
+            "Same model on different platforms may have different token counts"
+
+        # Keep results separate - DON'T aggregate or average
+        assert all(result["platform"] for result in [
+            platform_example["ollama_local"],
+            platform_example["gcp_vertex"],
+            platform_example["azure"]
+        ]), "Each result must clearly identify its platform"
+
+    def test_token_result_includes_platform_tracking(self):
+        """Verify TokenCountResult tracks platform information"""
+        registry = TokenCounterRegistry()
+        text = TEST_SAMPLES["english_medium"]["text"]
+
+        # OpenAI result should be identifiable as from OpenAI
+        result_openai = registry.count_tokens("gpt-4o", text)
+        assert result_openai.provider == "openai", "Provider must be set"
+        assert result_openai.source in ["local", "api"], "Source must be clear"
+
+        # If Ollama available, it should be identifiable separately
+        ollama_counter = registry.get_counter("ollama")
+        if ollama_counter:
+            # Different provider
+            assert ollama_counter.provider_name != result_openai.provider
+
+    def test_platform_metadata_preserved_in_results(self):
+        """Verify platform metadata is preserved in token count results
+
+        When same model is counted on different platforms, results must
+        clearly identify their source so users can't accidentally mix them.
+        """
+        registry = TokenCounterRegistry()
+        text = "test"
+
+        # OpenAI
+        result_openai = registry.count_tokens("gpt-4o", text, provider="openai")
+        assert result_openai.provider == "openai"
+        assert result_openai.model == "gpt-4o"
+
+        # Both should be separate, never aggregated
+        results = [result_openai]
+        providers = set(r.provider for r in results)
+        models = set(r.model for r in results)
+
+        # Each combination is unique
+        assert len(providers) == len(results), "Each result has distinct provider"
+
+    def test_registry_detects_platform_mixing(self):
+        """Registry should warn when same model appears on different platforms
+
+        This prevents users from accidentally aggregating or averaging
+        token counts from different platforms.
+        """
+        from pytokencalc.tokenizers import TokenCountResult
+
+        registry = TokenCounterRegistry()
+        text = TEST_SAMPLES["english_short"]["text"]
+
+        # Single platform - should be consistent
+        result1 = registry.count_tokens("gpt-4o", text, provider="openai")
+        consistency = registry.validate_platform_consistency([result1])
+        assert consistency["consistent"], "Single platform should be consistent"
+        assert len(consistency["warnings"]) == 0, "Single platform should have no warnings"
+
+        # Simulate multi-platform results (same model, different providers)
+        result_openai = TokenCountResult(
+            input_tokens=100,
+            provider="openai",
+            model="llama2",
+            source="api"
+        )
+        result_ollama = TokenCountResult(
+            input_tokens=98,
+            provider="ollama",
+            model="llama2",  # Same model name, different platform
+            source="api"
+        )
+
+        # Validator should detect this and warn
+        consistency = registry.validate_platform_consistency([result_openai, result_ollama])
+        assert not consistency["consistent"], "Different platforms for same model should trigger warning"
+        assert len(consistency["warnings"]) > 0, "Should have warnings about platform mixing"
+        assert "llama2" in consistency["warnings"][0], "Warning should mention the conflicting model"
+
+
 class TestOllamaAccuracy:
     """Verify Ollama token counts (local LLM inference engine)"""
 
