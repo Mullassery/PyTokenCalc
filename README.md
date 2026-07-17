@@ -466,9 +466,40 @@ PyTokenCalc maintains a database to store token counts and enable reconciliation
 
 ---
 
+## Token Counting Scope
+
+PyTokenCalc counts tokens for **all operations**, including:
+
+### Inference (Text Generation)
+```python
+# Count tokens for chat/completion endpoints
+result = registry.count_tokens("gpt-4o", "Write a story about...")
+# Tokens used for generating responses
+```
+
+### Embeddings (Vector Representation)
+```python
+# Count tokens for embedding API calls
+result = registry.count_tokens("text-embedding-3-large", "Hello world")
+# Tokens used for creating embeddings
+```
+
+### Any Token Consumption
+- Chat completions
+- Text embeddings
+- Image descriptions
+- Code generation
+- Summarization
+- Classification
+- Any model operation that consumes tokens
+
+**One function. All operations.**
+
+---
+
 ## What's NOT Included
 
-PyTokenCalc counts tokens. That's it.
+PyTokenCalc counts tokens accurately. That's what it does.
 
 For advanced use cases like token intelligence, optimization, or analytics, use OpenAnchor (which bundles PyTokenCalc) or build on PyTokenCalc's token counting API:
 - 🔍 Token intelligence & attribution (use OpenAnchor)
