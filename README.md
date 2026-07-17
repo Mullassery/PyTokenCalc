@@ -28,19 +28,9 @@
 - 104 tests passing, zero breaking changes
 
 **Documentation:**
-- Updated README with all v0.9 features
 - CUSTOM_PROVIDERS.md (200+ lines, 10+ provider examples including Docker/Kubernetes)
 - CHANGELOG.md (complete version history)
-- RELEASE_NOTES_v0.9.0.md (comprehensive)
-
-### v1.0 (Planned - Q4 2026)
-- Cost attribution engine (token cost per operation)
-- Advanced anomaly detection
-- Enterprise dashboard
-- Multi-model orchestration
-- Streaming token counting
-
-For detailed roadmap, see [RELEASE_NOTES_v0.9.0.md](RELEASE_NOTES_v0.9.0.md)
+- RELEASE_NOTES_v0.9.0.md (comprehensive release documentation)
 
 ---
 
