@@ -76,6 +76,30 @@ That's it. No provider-specific code. No multiple libraries. No headaches.
 
 ---
 
+## ⚡ Quick Start: Terminal One-Liners
+
+Don't want to write Python? Use the `pycount` command directly:
+
+```bash
+# Count tokens instantly
+pycount "Hello world"
+# Output: 2 tokens (input: 2)
+
+# Pipe from stdin
+echo "Your text here" | pycount
+
+# Use a different model
+pycount -m claude-3-sonnet "Your text"
+
+# JSON output for scripting
+pycount -j "Your text"
+# {"model": "gpt-4", "tokens": 2, "input": 2, ...}
+```
+
+**→ [Full CLI Guide](QUICK_START_CLI.md)**
+
+---
+
 ## What You Get
 
 ### 1. **True Unified Interface**
