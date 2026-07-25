@@ -354,7 +354,7 @@ c2a04da  Task 1.1 Complete: Add Missing Providers (PyTokenCalc v0.9)
 ## 👨‍💻 Author
 
 **Georgi Mammen Mullassery** (@Mullassery)  
-Licensed under MIT License
+Licensed under Proprietary License
 
 ---
 

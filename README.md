@@ -606,7 +606,7 @@ Want to add support for a new provider? See [ADDING_PROVIDERS.md](ADDING_PROVIDE
 
 ## License
 
-MIT License. See [LICENSE](LICENSE) for details.
+Proprietary License. See [LICENSE](LICENSE) for details.
 
 ---
 
