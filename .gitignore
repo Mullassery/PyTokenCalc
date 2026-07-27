@@ -1,49 +1,43 @@
-# Dependencies
-node_modules/
-__pycache__/
-*.pyc
-*.pyo
-*.egg-info/
-dist/
-build/
-
-# Environment
+# Sensitive files and credentials
 .env
 .env.local
-.venv
-venv/
-env/
+.env.*.local
+*.key
+*.pem
+*.crt
+credentials.json
+secrets.json
+.credentials
+config.local.*
+.config.local
+oauth_tokens.json
 
-# IDE
+# IDE files
 .vscode/
 .idea/
 *.swp
-*.swo
 *~
-
-# OS
 .DS_Store
-Thumbs.db
 
-# Build artifacts
-skill/dist/
-skill/build/
-server/dist/
-target/
-*.whl
+# Python
+__pycache__/
+*.py[cod]
 *.egg-info/
-
-# Rust/Cargo
-Cargo.lock
-**/*.rlib
-**/*.so
-**/*.dylib
-
-# Test coverage
-.coverage
-htmlcov/
+dist/
+build/
 .pytest_cache/
 
-# Cache
-*.cache
-.mypy_cache/
+# Virtual environments
+venv/
+env/
+.venv
+
+# Rust
+target/
+Cargo.lock
+
+# Temp files
+*.tmp
+*.log
+temp/
+tmp/
