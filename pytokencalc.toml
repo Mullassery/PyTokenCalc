@@ -1,0 +1,21 @@
+[mcp]
+enabled = true
+port = 8778
+discovery_method = "stdio"
+
+[mcp.tools]
+count_tokens = true
+estimate_cost = true
+compare_model_costs = true
+get_model_pricing = true
+track_budget = true
+set_budget_alert = true
+analyze_token_usage = true
+optimize_prompt = true
+batch_count_tokens = true
+get_token_breakdown = true
+export_pricing_report = true
+estimate_total_cost = true
+
+[mcp.security]
+require_auth = false
