@@ -24,7 +24,7 @@ clickhouse-driver>=0.5.0,<1.0
 numpy>=1.24.0,<2.0
 
 # Async
-aiohttp>=3.8.0,<4.0
+aiohttp>=3.14.1,<4.0
 
 # Date/time
 python-dateutil>=2.8.2,<3.0
