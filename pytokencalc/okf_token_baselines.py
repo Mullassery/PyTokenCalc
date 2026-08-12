@@ -77,7 +77,16 @@ class OKFTokenBaselines:
 
     def estimate_cost(self, provider: str, model: str, task_type: str,
                      input_tokens: int) -> Optional[float]:
-        """Estimate output tokens based on baseline."""
+        """Predict total *token count* (input + expected output) from a
+        historical baseline ratio.
+
+        NOTE: Despite the name, this does NOT return a dollar amount. It's a
+        token-count predictor for capacity planning ("given N input tokens,
+        how many total tokens will this provider/model/task typically use,
+        based on past samples?"). For a real USD cost estimate, use the
+        top-level ``pytokencalc.estimate_cost(model, input_tokens,
+        output_tokens)``, which is backed by a per-model pricing table.
+        """
         baseline = self.get_baseline(provider, model, task_type)
         if not baseline:
             return None

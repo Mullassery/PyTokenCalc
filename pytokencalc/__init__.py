@@ -1,5 +1,5 @@
 """
-PyTokenCalc v1.0.3: Universal Token Counting for ANY LLM
+PyTokenCalc v1.1.0: Universal Token Counting for ANY LLM
 
 One library. One API. Every LLM provider. Custom models. BYOM support.
 
@@ -35,8 +35,12 @@ Documentation: https://github.com/Mullassery/PyTokenCalc/blob/main/README.md
 Custom Providers: https://github.com/Mullassery/PyTokenCalc/blob/main/CUSTOM_PROVIDERS.md
 """
 
-__version__ = "1.0.3"
+from ._version import __version__
 __author__ = "Georgi Mammen Mullassery"
+
+# Top-level ergonomic API (v1.1.0+): count_tokens() -> int, estimate_cost() -> USD
+from .api import count_tokens, estimate_cost
+from .pricing import get_model_pricing, PRICING_TABLE, PRICING_LAST_UPDATED
 
 # Token counting (v0.7+: Multi-provider token counter)
 try:
@@ -91,6 +95,12 @@ from .quick_cli import QuickCLI
 from pytokencalc._mcp_connector import TokenCalculator
 
 __all__ = [
+    # Top-level ergonomic API
+    "count_tokens",
+    "estimate_cost",
+    "get_model_pricing",
+    "PRICING_TABLE",
+    "PRICING_LAST_UPDATED",
     # Token counting interface
     "TokenCounter",
     "TokenCountResult",
