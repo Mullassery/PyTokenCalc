@@ -212,7 +212,7 @@ class StatGuardianTokenCounter:
         """Count tokens with quality validation."""
         # Count tokens
         result = self.counter.count(text, model)
-        token_count = result.get("tokens") if isinstance(result, dict) else result.tokens
+        token_count = result.get("tokens") if isinstance(result, dict) else result.input_tokens
 
         # Validate token count
         validation = self.token_contract.validate_count(token_count, baseline)

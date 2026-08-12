@@ -186,6 +186,58 @@ class TokenCounterRegistry:
         except Exception as e:
             raise RuntimeError(f"Failed to count tokens for {model}: {e}")
 
+    def count_vision(
+        self,
+        model: str,
+        text: str,
+        num_images: int = 1,
+        provider: Optional[str] = None,
+        image_path: Optional[str] = None,
+        image_url: Optional[str] = None,
+    ) -> TokenCountResult:
+        """
+        Count tokens for text + vision (image) input.
+
+        Args:
+            model: Model ID (e.g., 'gpt-4o', 'gpt-4-vision')
+            text: Text to tokenize
+            num_images: Number of images included
+            provider: Optional provider hint (e.g., 'openai')
+            image_path: Optional local path to an image (provider-specific)
+            image_url: Optional URL to an image (provider-specific)
+
+        Returns:
+            TokenCountResult with input/image token counts
+
+        Raises:
+            ValueError: If model cannot be tokenized
+        """
+        counter = None
+
+        if provider:
+            counter = self.get_counter(provider)
+            if not counter:
+                raise ValueError(f"Unknown provider: {provider}")
+        else:
+            counter = self._auto_detect_counter(model)
+
+        if not counter:
+            raise ValueError(
+                f"No token counter available for model: {model}. "
+                f"Available counters: {list(self.counters.keys())}"
+            )
+
+        try:
+            return counter.count_vision(
+                text,
+                model,
+                image_path=image_path,
+                image_url=image_url,
+                num_images=num_images,
+            )
+        except Exception as e:
+            raise RuntimeError(f"Failed to count vision tokens for {model}: {e}")
+
     def count_batch(
         self,
         requests: List[Dict[str, Any]]

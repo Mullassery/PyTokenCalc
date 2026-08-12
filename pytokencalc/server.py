@@ -2,13 +2,20 @@
 
 from typing import Dict, Any, Optional
 
+from ._version import __version__
 from .tokenizers import TokenCounterRegistry, TokenCounterCache
 
 
 class PyTokenCalcServer:
-    """REST API server for token counting workflows."""
+    """REST API server for token counting workflows.
 
-    def __init__(self, host: str = "0.0.0.0", port: int = 8005):
+    SECURITY: Defaults to binding on 127.0.0.1 (localhost only). Binding to
+    "0.0.0.0" (all interfaces) exposes this server to the network with no
+    built-in authentication -- only do that behind a reverse proxy / auth
+    layer you control, and pass host="0.0.0.0" explicitly.
+    """
+
+    def __init__(self, host: str = "127.0.0.1", port: int = 8005):
         """Initialize server."""
         self.host = host
         self.port = port
@@ -20,7 +27,7 @@ class PyTokenCalcServer:
     ) -> Dict[str, Any]:
         """Count tokens for text."""
         try:
-            result = self.registry.count(text, model, provider)
+            result = self.registry.count_tokens(model, text, provider)
             return {
                 "status": "success",
                 "model": model,
@@ -47,7 +54,7 @@ class PyTokenCalcServer:
         """Count tokens for text + vision."""
         try:
             result = self.registry.count_vision(
-                text, model, num_images=image_count, provider=provider
+                model, text, num_images=image_count, provider=provider
             )
             return {
                 "status": "success",
@@ -85,7 +92,7 @@ class PyTokenCalcServer:
                 "count": len(models),
             }
         else:
-            all_models = self.registry.list_all_models()
+            all_models = self.registry.list_models()
             return {
                 "status": "success",
                 "models": all_models,
@@ -113,7 +120,7 @@ class PyTokenCalcServer:
         return {
             "status": "healthy",
             "service": "pytokencalc",
-            "version": "0.7.0",
+            "version": __version__,
             "providers_available": len(self.registry.list_providers()),
         }
 
@@ -196,9 +203,13 @@ def create_flask_app(server: Optional[PyTokenCalcServer] = None):
     return app
 
 
-def run_server(host: str = "0.0.0.0", port: int = 8005):
-    """Run the REST API server."""
-    app = create_flask_app()
+def run_server(host: str = "127.0.0.1", port: int = 8005):
+    """Run the REST API server.
+
+    SECURITY: Defaults to localhost-only. Pass host="0.0.0.0" explicitly to
+    expose this on the network -- do so only behind your own auth/proxy layer.
+    """
+    app = create_flask_app(PyTokenCalcServer(host=host, port=port))
     app.run(host=host, port=port, debug=False)
 
 

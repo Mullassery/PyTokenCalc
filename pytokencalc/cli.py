@@ -32,7 +32,7 @@ class CLIInterface:
             JSON response with token counts
         """
         try:
-            result = self.registry.count(text, model, provider)
+            result = self.registry.count_tokens(model, text, provider)
             return {
                 "status": "success",
                 "model": model,
@@ -73,7 +73,7 @@ class CLIInterface:
         """
         try:
             result = self.registry.count_vision(
-                text, model, num_images=image_count, provider=provider
+                model, text, num_images=image_count, provider=provider
             )
             return {
                 "status": "success",
@@ -126,7 +126,7 @@ class CLIInterface:
                 "count": len(models),
             }
         else:
-            all_models = self.registry.list_all_models()
+            all_models = self.registry.list_models()
             return {
                 "status": "success",
                 "models": all_models,

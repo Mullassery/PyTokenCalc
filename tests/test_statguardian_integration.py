@@ -219,6 +219,35 @@ class TestProviderReliabilityContract:
         assert result["severity"] == "warning"
 
 
+class TestStatGuardianTokenCounterRealCounter:
+    """Test StatGuardian wrapper against a real (non-mock) TokenCounter.
+
+    The mock-based tests below only ever exercise count_with_validation()
+    against a hand-rolled object returning {"tokens": 100}, which never hit
+    the `result.input_tokens` attribute-access path used for real
+    TokenCountResult objects. That let a real bug (accessing a
+    nonexistent `.tokens` attribute) go undetected. This test uses the
+    actual OpenAI/tiktoken-backed counter (offline, no API key needed) to
+    close that gap.
+    """
+
+    def test_count_with_validation_against_real_openai_counter(self):
+        pytest.importorskip("tiktoken")
+        from pytokencalc.tokenizers.openai_counter import OpenAITokenCounter
+
+        real_counter = OpenAITokenCounter()
+        validated = StatGuardianTokenCounter(real_counter)
+
+        result = validated.count_with_validation("Hello world, this is a test.", "gpt-4o")
+
+        assert "token_count" in result
+        assert isinstance(result["token_count"], int)
+        assert result["token_count"] > 0
+        assert "validation" in result
+        assert result["validation"]["is_valid"] is True
+        assert "compliance_score" in result
+
+
 class TestStatGuardianTokenCounter:
     """Test StatGuardian wrapper."""
 
