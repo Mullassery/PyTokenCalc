@@ -51,9 +51,17 @@ except ImportError:
                 self._ready = False
 
         def _generate_dab_config(self, tools: Dict[str, Any]) -> Dict:
+            # SECURITY: localhost-only binding, no wildcard CORS, and no
+            # wildcard RBAC by default. Widening any of these (binding to
+            # 0.0.0.0, opening CORS to "*", or granting the "*" role/action)
+            # is an explicit choice for a deployment that has its own
+            # network/auth controls -- it should not be the library default.
             return {
-                "runtime": {"host": "0.0.0.0", "port": self.port, "cors": {"origins": ["*"]}},
-                "entities": {k: {"source": k, "permissions": [{"actions": ["*"], "roles": ["*"]}]} for k in tools.keys()},
+                "runtime": {"host": "127.0.0.1", "port": self.port, "cors": {"origins": []}},
+                "entities": {
+                    k: {"source": k, "permissions": [{"actions": ["read"], "roles": ["authenticated"]}]}
+                    for k in tools.keys()
+                },
                 "rest": {"enabled": True, "path": "/api"},
                 "graphql": {"enabled": True, "path": "/graphql"},
                 "mcp": {"enabled": True, "path": "/mcp"},
