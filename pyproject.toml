@@ -2,8 +2,8 @@
 requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools]
-packages = ["pytokencalc"]
+[tool.setuptools.packages.find]
+include = ["pytokencalc", "pytokencalc.*"]
 
 [project]
 name = "pytokencalc"
