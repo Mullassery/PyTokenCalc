@@ -2,10 +2,13 @@
 
 **Know your LLM costs before you hit send.**
 
-Stop guessing tokens. PyTokenCalc counts tokens from 20+ LLM providers (Claude, GPT-4, Gemini, Llama, Mistral, and more) with 99.9% accuracy in a single function call. Estimate costs, track usage, optimize spending—no setup required.
+Stop guessing tokens. PyTokenCalc counts tokens across OpenAI, Anthropic,
+Google, Cohere, Azure OpenAI, HuggingFace/open-source models, Ollama, and
+custom endpoints, then estimates the dollar cost of a request from a
+maintained per-model pricing table.
 
 [![PyPI](https://img.shields.io/pypi/v/pytokencalc)](https://pypi.org/project/pytokencalc)
-[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org)
+[![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue)](https://www.python.org)
 [![Tests Passing](https://img.shields.io/badge/tests-passing-success)](./tests)
 [![License: Proprietary](https://img.shields.io/badge/License-Proprietary-blue.svg)](./LICENSE)
 
@@ -16,13 +19,13 @@ Stop guessing tokens. PyTokenCalc counts tokens from 20+ LLM providers (Claude, 
 ```python
 from pytokencalc import count_tokens, estimate_cost
 
-# Count tokens instantly
-tokens = count_tokens("Claude", "Tell me a story")
-print(f"Tokens: {tokens}")  # 5
+# Count tokens instantly (runs locally via tiktoken -- no API key needed)
+tokens = count_tokens("Tell me a story about a robot", model="gpt-4o")
+print(f"Tokens: {tokens}")
 
-# Estimate cost
-cost = estimate_cost("gpt-4", tokens, input_only=True)
-print(f"Cost: ${cost:.4f}")  # $0.0015
+# Estimate cost from the pricing table
+cost = estimate_cost("gpt-4o", input_tokens=tokens)
+print(f"Cost: ${cost:.6f}")
 ```
 
 ---
@@ -36,60 +39,82 @@ print(f"Cost: ${cost:.4f}")  # $0.0015
 - Each provider has different pricing
 
 **The Solution:**
-- Unified API for all LLM providers
-- Accurate token counting for 20+ models
-- Real-time cost estimation
-- Works offline (no API calls needed)
+- One API across cloud, local, and custom providers
+- Token counting that matches each provider's own tokenizer
+- Real cost estimation from a maintained pricing table (see
+  [docs/MODELS.md](docs/MODELS.md) for exactly which models are covered)
 
 ---
 
 ## Key Features
 
-- **20+ Providers:** Claude, GPT-4, Gemini, Llama 2, Mistral, Cohere, PaLM, and more
-- **Accurate Tokenization:** Matches official provider tokenizers (99.9% accuracy)
-- **Fast:** <1ms per count (precompiled Rust core)
-- **No Dependencies:** Works standalone, no external APIs
-- **Cost Estimation:** Input-only, output, or full conversation costs
-- **Batch Processing:** Count tokens for entire conversations at once
-- **Custom Models:** Define your own tokenizer patterns
+- **Multi-provider:** OpenAI, Anthropic Claude, Google Gemini, Cohere, Azure
+  OpenAI, HuggingFace/open-source models, Ollama, and any custom HTTP
+  endpoint you register
+- **Accurate tokenization:** uses each provider's own tokenizer/API
+  (`tiktoken` for OpenAI/Azure, the HuggingFace `transformers` tokenizer,
+  the live count-tokens endpoint for Anthropic/Google/Cohere)
+- **Real cost estimation:** `estimate_cost()` is backed by a per-model USD
+  pricing table (input vs. output rates), not a guess -- see
+  [pytokencalc/pricing.py](pytokencalc/pricing.py) for sources and the
+  last-updated date
+- **Fast local counting:** sub-millisecond in our testing for the local
+  (tiktoken/HuggingFace) providers on typical hardware -- see
+  [Performance](#performance) below
+- **Batch processing:** count tokens for many prompts in one call
+- **Custom / BYOM models:** register your own provider or fine-tuned model
+  (see [CUSTOM_PROVIDERS.md](CUSTOM_PROVIDERS.md))
 
 ---
 
 ## Real-World Use Cases
 
+*The examples below use Claude/GPT-4 interchangeably for illustration.
+Anthropic/Google/Cohere models require the relevant package installed and
+an API key set (see [docs/MODELS.md](docs/MODELS.md)); OpenAI/GPT-4 models
+work offline out of the box.*
+
 **Budget Tracking:**
 ```python
-messages = [
-    {"role": "user", "content": "Hello"},
-    {"role": "assistant", "content": "Hi there!"},
-]
-total_cost = estimate_cost("claude-3-opus", messages)
-print(f"Conversation will cost: ${total_cost}")
+from pytokencalc import count_tokens, estimate_cost
+
+prompt = "Hello"
+reply_tokens_estimate = 50  # however you estimate expected output length
+
+input_tokens = count_tokens(prompt, model="claude-3-opus")
+cost = estimate_cost("claude-3-opus", input_tokens, reply_tokens_estimate)
+print(f"Estimated cost: ${cost:.4f}")
 ```
 
 **Prevent Overruns:**
 ```python
-# Reject requests that cost too much
-if estimate_cost("gpt-4", prompt) > 0.10:
+tokens = count_tokens(prompt, model="gpt-4")
+if estimate_cost("gpt-4", tokens) > 0.10:
     print("Request too expensive, rejected")
 ```
 
 **Compare Providers:**
 ```python
-for model in ["claude-3-opus", "gpt-4", "gemini-pro"]:
-    cost = estimate_cost(model, prompt)
-    print(f"{model}: ${cost:.4f}")
+prompt = "Explain quantum computing in one paragraph."
+for model in ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"]:
+    tokens = count_tokens(prompt, model=model)
+    cost = estimate_cost(model, tokens)
+    print(f"{model}: {tokens} tokens, ${cost:.6f}")
 ```
 
 ---
 
 ## Performance
 
-| Operation | Time |
-|-----------|------|
-| Count tokens (100 words) | <1ms |
-| Estimate cost | <1ms |
-| Batch process (1000 messages) | <100ms |
+Local (tiktoken/HuggingFace-backed) counting is fast -- in informal local
+benchmarking, a single uncached `count_tokens()` call against `gpt-4o` on a
+few dozen words took well under 1ms. PyTokenCalc itself is pure Python; the
+speed comes from `tiktoken` (OpenAI/Azure) and the HuggingFace `tokenizers`
+library, both of which have compiled (Rust) cores under their Python
+bindings. There is no compiled/Rust code in PyTokenCalc itself. Anthropic,
+Google, and Cohere counting makes a live network call to the provider's
+API, so latency there is dominated by that round trip (with response
+caching to avoid repeat calls for identical input).
 
 ---
 
@@ -99,15 +124,21 @@ for model in ["claude-3-opus", "gpt-4", "gemini-pro"]:
 pip install pytokencalc
 # or with uv
 uv pip install pytokencalc
+
+# with local tokenizer support (tiktoken + HuggingFace transformers)
+pip install "pytokencalc[tokenizers]"
 ```
+
+Requires Python 3.9+.
 
 ---
 
 ## Documentation
 
-- [API Reference](docs/API.md) — All counting and cost functions
-- [Supported Models](docs/MODELS.md) — Complete provider list
-- [Examples](examples/) — Real-world code samples
+- [API Reference](docs/API.md) — top-level functions, the full registry API, CLI, and REST server
+- [Supported Models](docs/MODELS.md) — provider list, offline vs. API-backed, pricing table coverage
+- [Custom Providers](CUSTOM_PROVIDERS.md) — register your own endpoint or BYOM
+- [Examples](examples/) — runnable code samples
 
 ---
 
@@ -117,4 +148,4 @@ Proprietary License - Free to use with explicit attribution. See [LICENSE](LICEN
 
 ---
 
-**PyTokenCalc v2.0.0** | Wheels-only distribution | Python 3.10+
+**PyTokenCalc v1.1.0** | Python 3.9+

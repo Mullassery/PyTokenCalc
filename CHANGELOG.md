@@ -2,6 +2,82 @@
 
 All notable changes to PyTokenCalc are documented in this file.
 
+## [1.1.0] - 2026-08-12
+
+Remediation release: the CLI, REST server, and documented quick-start
+example were broken in 1.0.3 (calling registry methods that didn't exist,
+or importing symbols that weren't exported). This release fixes those
+paths for real and adds the cost-estimation half of the product's stated
+purpose, which previously didn't exist.
+
+### Fixed
+- `CLIInterface`/`PyTokenCalcServer` called `registry.count()`,
+  `registry.count_vision()`, and `registry.list_all_models()`, none of
+  which existed on `TokenCounterRegistry` -- every CLI/server request
+  raised `AttributeError`. Call sites now use `registry.count_tokens()`
+  and `registry.list_models()`; `TokenCounterRegistry.count_vision()` was
+  added for real.
+- `from pytokencalc import count_tokens, estimate_cost` (the README's
+  headline example) raised `ImportError` -- neither symbol was exported.
+  Both are now real, tested functions (see Added, below).
+- Three accuracy-verification test classes (Anthropic/Google/Cohere vs.
+  live API) were permanently skipped due to a broken
+  `skipif(pytest.mark.skipif, ...)` condition that was always truthy,
+  regardless of whether the relevant API key was set. Fixed to check the
+  actual environment variable.
+- `.github/workflows/ci.yml` ran `cd python && ...`, but there is no
+  `python/` subdirectory in this repo -- CI could not run at all. Fixed to
+  operate on the actual repo layout, and added a coverage step.
+- `StatGuardianTokenCounter.count_with_validation()` accessed
+  `result.tokens`, which doesn't exist on `TokenCountResult` (the field is
+  `input_tokens`) -- this raised `AttributeError` against any real
+  counter, invisible in tests because they only exercised a mock. Fixed,
+  and added a test against the real OpenAI/tiktoken counter.
+- `OllamaTokenCounter.__init__` performed a blocking network health-check
+  on every construction (i.e. on every `TokenCounterRegistry()`). Moved to
+  a lazy `.is_available()` check performed on first actual use.
+- Removed the false "precompiled Rust core" / "no external services" /
+  "works offline, no API calls needed" README claims. PyTokenCalc is pure
+  Python; the offline claim now correctly scopes to the OpenAI/tiktoken,
+  Azure OpenAI, and HuggingFace-backed counters only -- Anthropic, Google,
+  and Cohere counting always makes a live API call.
+- Reconciled version numbers (README said "v2.0.0", package said 1.0.3;
+  now consistently 1.1.0 everywhere) and Python version requirement
+  (README said 3.10+, `pyproject.toml`/CI said 3.9+; now consistently
+  3.9+).
+
+### Added
+- `pytokencalc.count_tokens(text, model="gpt-4o", provider=None) -> int`
+  and `pytokencalc.estimate_cost(model, input_tokens, output_tokens=0) ->
+  float`, exported from the package root.
+- A real, per-model USD pricing table (`pytokencalc/pricing.py`) covering
+  the major OpenAI, Anthropic, and Google model families (plus Azure and
+  Cohere), with a documented last-updated date and provider pricing-page
+  links -- see `docs/MODELS.md` for exact coverage.
+- Basic input validation before user-supplied `model` strings reach
+  `AutoTokenizer.from_pretrained()` in the HuggingFace-backed counters
+  (rejects path traversal / non-repo-ID-shaped input).
+- `docs/API.md` and `docs/MODELS.md` (previously linked from the README
+  but never created).
+
+### Security
+- `PyTokenCalcServer` and `run_server()` now default to binding
+  `127.0.0.1` instead of `0.0.0.0`; the MCP connector's fallback config
+  now defaults to localhost binding, an empty CORS origin list, and
+  scoped (not wildcard) RBAC permissions; `pytokencalc.toml`'s
+  `require_auth` now defaults to `true`. Wider exposure is still possible,
+  but requires explicitly opting in rather than being the default.
+
+### Changed
+- Pruned unused dependencies from `requirements-lock.txt` (`groq`,
+  `mistralai`, `clickhouse-driver`, `msgpack`, `aiohttp`, `numpy`,
+  `httpx`, `python-dateutil` -- none were imported anywhere in
+  `pytokencalc/`).
+
+### Testing
+- 135 passed, 26 skipped (expected: missing optional API keys/packages,
+  no local Ollama daemon), 0 failed.
+
 ## [0.9.0] - 2026-07-18
 
 ### Added (Major Features)
