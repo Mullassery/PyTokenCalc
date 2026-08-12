@@ -4,7 +4,7 @@ Provides token counting for models running in Ollama (local LLM inference engine
 Supports dynamic model discovery - any model in Ollama is automatically supported.
 """
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import time
 import logging
 
@@ -72,6 +72,12 @@ class OllamaTokenCounter(TokenCounter):
 
         Args:
             base_url: Ollama API endpoint (default: localhost:11434)
+
+        Note: This does NOT perform network I/O. Whether Ollama is actually
+        reachable is checked lazily on first use (or explicitly via
+        `.is_available()`), not at construction time -- constructors
+        shouldn't block on the network, and TokenCounterRegistry() creates
+        one of these on every instantiation.
         """
         if not REQUESTS_AVAILABLE:
             raise ImportError(
@@ -81,18 +87,22 @@ class OllamaTokenCounter(TokenCounter):
 
         self.base_url = base_url.rstrip("/")
         self.api_url = f"{self.base_url}/api"
+        self._available: Optional[bool] = None  # lazily populated
 
-        # Verify Ollama is running
-        try:
-            response = requests.get(f"{self.api_url}/tags", timeout=2)
-            if response.status_code != 200:
-                raise RuntimeError(f"Ollama API error: {response.status_code}")
-        except Exception as e:
-            raise RuntimeError(
-                f"Ollama not accessible at {self.base_url}. "
-                f"Ensure Ollama is running: ollama serve. "
-                f"Details: {e}"
-            )
+    def is_available(self, force_recheck: bool = False) -> bool:
+        """Check whether Ollama is reachable at `base_url`.
+
+        Performs a network call (cached after the first check unless
+        `force_recheck=True`). Safe to call explicitly before counting, but
+        also called automatically on first use by `count()`.
+        """
+        if self._available is None or force_recheck:
+            try:
+                response = requests.get(f"{self.api_url}/tags", timeout=2)
+                self._available = response.status_code == 200
+            except Exception:
+                self._available = False
+        return self._available
 
     @property
     def provider_name(self) -> str:
@@ -139,6 +149,12 @@ class OllamaTokenCounter(TokenCounter):
             raise ValueError(
                 f"Model '{model}' not recognized. "
                 f"Available models: {self.supported_models}"
+            )
+
+        if not self.is_available():
+            raise RuntimeError(
+                f"Ollama not accessible at {self.base_url}. "
+                f"Ensure Ollama is running: ollama serve."
             )
 
         try:

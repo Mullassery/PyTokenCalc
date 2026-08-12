@@ -7,6 +7,7 @@ from typing import List, Dict, Any, Optional
 import time
 
 from .base import TokenCounter, TokenCountResult
+from ._hf_validation import validate_model_id_for_from_pretrained
 
 try:
     from transformers import AutoTokenizer
@@ -57,7 +58,13 @@ class HuggingFaceTokenCounter(TokenCounter):
 
     def _get_tokenizer(self, model: str):
         """Get or load tokenizer for model"""
+        model_lower = model.lower()
+        resolved_from_alias = model_lower in self.MODEL_ALIASES
         model_id = self._resolve_model_id(model)
+
+        error = validate_model_id_for_from_pretrained(model_id, resolved_from_alias)
+        if error:
+            raise ValueError(error)
 
         if model_id not in self.tokenizers:
             try:

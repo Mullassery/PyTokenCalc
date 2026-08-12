@@ -47,3 +47,8 @@ htmlcov/
 # Cache
 *.cache
 .mypy_cache/
+
+# Runtime-generated data (StatGuardian validation logs, OKF baselines)
+token_validations/
+token_baselines/
+coverage.xml
