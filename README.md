@@ -9,7 +9,7 @@ maintained per-model pricing table.
 
 [![PyPI](https://img.shields.io/pypi/v/pytokencalc)](https://pypi.org/project/pytokencalc)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue)](https://www.python.org)
-[![Tests Passing](https://img.shields.io/badge/tests-passing-success)](./tests)
+[![CI](https://github.com/Mullassery/PyTokenCalc/actions/workflows/ci.yml/badge.svg)](https://github.com/Mullassery/PyTokenCalc/actions/workflows/ci.yml)
 [![License: Proprietary](https://img.shields.io/badge/License-Proprietary-blue.svg)](./LICENSE)
 
 ---
@@ -141,6 +141,11 @@ Requires Python 3.9+.
 - [Examples](examples/) — runnable code samples
 
 ---
+
+## Known issues
+
+- The "Performance" numbers above are informal, uncommitted local observations, not a checked-in benchmark result — there is no benchmark script or results file in this repo backing a specific number as fact.
+- No open GitHub issues and no `TODO`/`FIXME` markers in `pytokencalc/` at the time of this writing.
 
 ## License
 
