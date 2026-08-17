@@ -3,7 +3,7 @@
 **Know your LLM costs before you hit send.**
 
 Stop guessing tokens. PyTokenCalc counts tokens across OpenAI, Anthropic,
-Google, Cohere, Azure OpenAI, HuggingFace/open-source models, Ollama, and
+Google, Cohere, Azure-hosted OpenAI models, HuggingFace/open-source models, Ollama, and
 custom endpoints, then estimates the dollar cost of a request from a
 maintained per-model pricing table.
 
@@ -48,12 +48,13 @@ print(f"Cost: ${cost:.6f}")
 
 ## Key Features
 
-- **Multi-provider:** OpenAI, Anthropic Claude, Google Gemini, Cohere, Azure
-  OpenAI, HuggingFace/open-source models, Ollama, and any custom HTTP
-  endpoint you register
+- **Multi-provider:** OpenAI, Anthropic Claude, Google Gemini, Cohere,
+  Azure-hosted OpenAI models, HuggingFace/open-source models, Ollama, and
+  any custom HTTP endpoint you register
 - **Accurate tokenization:** uses each provider's own tokenizer/API
-  (`tiktoken` for OpenAI/Azure, the HuggingFace `transformers` tokenizer,
-  the live count-tokens endpoint for Anthropic/Google/Cohere)
+  (`tiktoken` for OpenAI and Azure-hosted OpenAI models, the HuggingFace
+  `transformers` tokenizer, the live count-tokens endpoint for
+  Anthropic/Google/Cohere)
 - **Real cost estimation:** `estimate_cost()` is backed by a per-model USD
   pricing table (input vs. output rates), not a guess -- see
   [pytokencalc/pricing.py](pytokencalc/pricing.py) for sources and the
@@ -109,7 +110,7 @@ for model in ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"]:
 Local (tiktoken/HuggingFace-backed) counting is fast -- in informal local
 benchmarking, a single uncached `count_tokens()` call against `gpt-4o` on a
 few dozen words took well under 1ms. PyTokenCalc itself is pure Python; the
-speed comes from `tiktoken` (OpenAI/Azure) and the HuggingFace `tokenizers`
+speed comes from `tiktoken` (OpenAI and Azure-hosted OpenAI models) and the HuggingFace `tokenizers`
 library, both of which have compiled (Rust) cores under their Python
 bindings. There is no compiled/Rust code in PyTokenCalc itself. Anthropic,
 Google, and Cohere counting makes a live network call to the provider's
