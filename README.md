@@ -147,6 +147,7 @@ Requires Python 3.9+.
 - [API Reference](docs/API.md) — top-level functions, the full registry API, CLI, and REST server
 - [Supported Models](docs/MODELS.md) — provider list, offline vs. API-backed, pricing table coverage
 - [Custom Providers](CUSTOM_PROVIDERS.md) — register your own endpoint or BYOM
+- [CLI Quick Start](QUICK_START_CLI.md) — the `pycount` terminal command (installed automatically with the package)
 - [Examples](examples/) — runnable code samples
 
 ---
@@ -162,4 +163,4 @@ This project is licensed under the [Apache License 2.0](LICENSE).
 
 ---
 
-**PyTokenCalc v1.1.0** | Python 3.9+
+**PyTokenCalc v1.2.0** | Python 3.9+

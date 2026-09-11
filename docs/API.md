@@ -117,4 +117,4 @@ print(ModelDiscovery.get_discovery_report("llama-2-7b"))  # human-readable repor
 ## Custom / BYOM providers
 
 See [CUSTOM_PROVIDERS.md](../CUSTOM_PROVIDERS.md) and
-[ADDING_PROVIDERS.md](../ADDING_PROVIDERS.md).
+[ADDING_PROVIDERS.md](archive/ADDING_PROVIDERS_v0.7.md) (historical, describes v0.7).

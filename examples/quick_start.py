@@ -209,5 +209,5 @@ if __name__ == "__main__":
     print("=" * 60)
     print("\n📚 Next steps:")
     print("  • Read README.md for API reference")
-    print("  • Check ADDING_PROVIDERS.md to add new tokenizers")
+    print("  • Check docs/archive/ADDING_PROVIDERS_v0.7.md (historical) or CUSTOM_PROVIDERS.md to add new tokenizers")
     print("  • Build custom analytics on top of PyTokenCalc's token data")
