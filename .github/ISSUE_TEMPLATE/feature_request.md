@@ -1,6 +1,6 @@
 ---
 name: Feature Request
-about: Suggest an idea for OpenAnchor
+about: Suggest an idea for PyTokenCalc
 title: "[FEATURE] "
 labels: enhancement
 assignees: ''

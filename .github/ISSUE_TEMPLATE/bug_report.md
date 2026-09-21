@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug to help us improve OpenAnchor
+about: Report a bug to help us improve PyTokenCalc
 title: "[BUG] "
 labels: bug
 assignees: ''
@@ -30,7 +30,7 @@ assignees: ''
 
 ## Environment
 - Python version: 
-- OpenAnchor version: 
+- PyTokenCalc version: 
 - OS: 
 - Installation method (pip, docker, source): 
 

@@ -1,72 +1,40 @@
-.PHONY: install build test lint fmt clean run help setup-hooks
+.PHONY: install dev test lint fmt fmt-check clean setup-hooks help
 
 help:
-	@echo "ClaudeBeacon development tasks (Rust + Python):"
-	@echo "  make install         Install dependencies"
-	@echo "  make build           Build Rust core + Python wrapper"
-	@echo "  make dev             Dev install with hot reload (maturin)"
-	@echo "  make test            Run all tests (Rust + Python)"
-	@echo "  make test-rust       Rust tests only"
-	@echo "  make test-python     Python tests only"
-	@echo "  make lint            Lint Rust + Python"
-	@echo "  make fmt             Format code"
-	@echo "  make fmt-check       Check format"
-	@echo "  make clean           Remove build artifacts"
+	@echo "PyTokenCalc development tasks (pure Python):"
+	@echo "  make install         Install package + dev/tokenizers extras"
+	@echo "  make dev             Editable install + pre-commit hooks"
+	@echo "  make test            Run the pytest suite with coverage"
+	@echo "  make lint            black --check + ruff check + mypy"
+	@echo "  make fmt             Auto-format with black + ruff --fix"
+	@echo "  make fmt-check       Check formatting without modifying files"
+	@echo "  make clean           Remove build/test artifacts"
 
-install: setup-hooks
-	@echo "Installing Rust dependencies..."
-	rustup update
-	@echo "Installing Python dependencies..."
-	pip install maturin pytest pytest-cov black ruff mypy
-	@echo "✓ Dependencies installed"
+install:
+	pip install -e ".[dev,tokenizers]"
+
+dev: install setup-hooks
 
 setup-hooks:
 	@command -v pre-commit >/dev/null 2>&1 || pip install pre-commit
 	pre-commit install
 
-build:
-	@echo "Building Rust core + Python wrapper..."
-	maturin build --release
-	@echo "✓ Build complete (wheels in target/wheels/)"
-
-dev:
-	@echo "Dev install (hot reload)..."
-	maturin develop
-
 test:
-	@echo "Running Rust tests..."
-	cargo test --workspace --release
-	@echo "Running Python tests..."
-	pytest tests/ -v --cov=tests
-	@echo "✓ All tests passed"
-
-test-rust:
-	cargo test --workspace --release
-
-test-python:
-	pytest tests/ -v --cov=tests
+	pytest tests/ -v --cov=pytokencalc --cov-report=term-missing
 
 lint:
-	@echo "Linting Rust..."
-	cargo clippy --workspace --all-targets
-	@echo "Linting Python..."
-	black --check python/ && ruff check python/ && mypy python/
-	@echo "✓ Lint complete"
+	black --check pytokencalc/ tests/
+	ruff check pytokencalc/ tests/
+	mypy pytokencalc/ --ignore-missing-imports
 
 fmt:
-	@echo "Formatting Rust..."
-	cargo fmt --all
-	@echo "Formatting Python..."
-	black python/ && ruff check python/ --fix
-	@echo "✓ Format complete"
+	black pytokencalc/ tests/
+	ruff check pytokencalc/ tests/ --fix
 
 fmt-check:
-	cargo fmt --all -- --check
-	black --check python/
+	black --check pytokencalc/ tests/
 
 clean:
-	cargo clean
-	rm -rf target dist build *.egg-info
+	rm -rf build dist *.egg-info .pytest_cache .ruff_cache .mypy_cache htmlcov .coverage coverage.xml
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
-	@echo "✓ Clean complete"

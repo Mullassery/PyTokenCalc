@@ -51,4 +51,4 @@ Open a [GitHub Discussion](https://github.com/Mullassery/PyTokenCalc/discussions
 
 ---
 
-**License:** MIT — By contributing, you agree your work is licensed under the same terms.
+**License:** Apache License 2.0 — By contributing, you agree your work is licensed under the same terms.

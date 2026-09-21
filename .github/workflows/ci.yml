@@ -31,3 +31,21 @@ jobs:
         with:
           name: coverage-py${{ matrix.python-version }}
           path: coverage.xml
+
+  dependency-audit:
+    name: Dependency vulnerability audit (pip-audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install package + pip-audit
+        run: |
+          pip install -e ".[dev,tokenizers]"
+          pip install pip-audit
+
+      - name: Run pip-audit
+        run: pip-audit

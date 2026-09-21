@@ -1,0 +1,12 @@
+# Bandit security-linter config (invoked by .pre-commit-config.yaml as
+# `bandit -c .bandit`). This file was referenced by the pre-commit hook
+# but did not exist, which made the bandit pre-commit hook fail outright
+# for anyone who ran `pre-commit run --all-files` or `git commit` with
+# hooks enabled. Minimal config: skip test fixtures (test code
+# intentionally exercises things like hardcoded dummy API keys) and
+# build/dist output.
+exclude_dirs:
+  - /tests
+  - /build
+  - /dist
+  - /docs
