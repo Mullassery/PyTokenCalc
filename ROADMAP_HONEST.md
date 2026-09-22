@@ -40,11 +40,24 @@ Repo: `/Users/georgimullassery/PyTokenCalc`, package version 1.2.0.
   `TokenCounterRegistry()` construction, which hit the bug below in this
   sandbox.
 
-## 2. Critical bug found in this pass (not fixed — needs a dedicated session)
+## 2. Critical bug found in this pass — FIXED 2026-09-22
 
 **A network hiccup loading tiktoken's OpenAI encodings takes down the
 *entire* token-counter registry, including providers that have nothing to
 do with OpenAI.**
+
+> **Fixed** in a follow-up quick-fix pass (2026-09-22): every per-provider
+> `try/except` in `TokenCounterRegistry._register_default_counters`
+> (`pytokencalc/tokenizers/registry.py`) now catches `Exception` instead of
+> just `ImportError`, so one provider's constructor blowing up (tiktoken
+> network failure, or anything else) only skips that provider instead of
+> crashing the whole registry. Regression tests in
+> `tests/test_registry_resilience.py` simulate a failing constructor
+> (`RuntimeError`, `OSError`) and confirm the registry still constructs and
+> still serves the other providers. Full suite went from 53 passed/47
+> failed (baseline, degraded network) to 156 passed/0 failed/26 skipped in
+> this environment. The description below is kept as-written for the
+> historical record of what was found.
 
 - `pytokencalc/tokenizers/openai_counter.py:49-66`: `OpenAITokenCounter.__init__`
   eagerly calls `_load_default_encodings()`, which downloads both
@@ -148,17 +161,21 @@ do with OpenAI.**
 
 ## 5. Other technical debt (concrete, by file:line)
 
-- **`pyproject.toml`**: `dependencies = ["pydantic>=2.0"]` is the library's
-  only declared hard dependency, but `grep -rn "from pydantic\|import
-  pydantic" pytokencalc/` returns **zero matches**. It is declared but
-  unused. Not removed in this pass (changing declared dependencies is a
-  real behavior change, left for a follow-up), but worth confirming
-  whether it's vestigial or was meant to back a validation layer that was
-  never wired in.
-- **`pytokencalc/pricing.py:22`**: `PRICING_LAST_UPDATED = "2025-06"`.
-  The module is explicit that this is a static snapshot, which is honest,
-  but it is well over a year stale relative to when this pass was run and
-  almost certainly missing current-generation models and rates.
+- ~~**`pyproject.toml`**: `dependencies = ["pydantic>=2.0"]`~~ **Fixed
+  2026-09-22**: confirmed zero usages anywhere in `pytokencalc/`, removed
+  from `pyproject.toml` (`dependencies = []`) and
+  `requirements-lock.txt`. Verified `pytokencalc` still imports and
+  `count_tokens()`/`estimate_cost()` still work with pydantic absent.
+- ~~**`pytokencalc/pricing.py:22`**: `PRICING_LAST_UPDATED = "2025-06"`~~
+  **Partially addressed 2026-09-22**: spot-checked the table's existing
+  entries (gpt-4o, claude-3-5-sonnet, etc.) against current OpenAI/
+  Anthropic pricing pages -- still accurate for those specific model IDs
+  (both providers kept legacy models at original pricing) -- and bumped
+  the marker to `"2026-09"` with a note clarifying it verifies the
+  *existing* rows, not full coverage. The table is still missing
+  current-generation model families that launched since 2025-06 (GPT-4.1/
+  GPT-5-era, Claude 4-era, etc.) -- adding those is real data-entry work,
+  left for a follow-up.
 - **Lint is not enforced anywhere.** `.github/workflows/ci.yml` only runs
   `pytest`; it never runs `ruff`, `black --check`, or `mypy`, despite all
   three being configured in `.pre-commit-config.yaml` and `pyproject.toml`.
@@ -169,7 +186,13 @@ do with OpenAI.**
   growing default rules unchecked. Not fixed here (291 findings is a real
   cleanup task, not a typo fix) — flagged for a dedicated lint-debt
   session, including deciding on an intentional `select =` in
-  `[tool.ruff]` instead of the implicit default.
+  `[tool.ruff]` instead of the implicit default. **Update 2026-09-22**:
+  now 299 findings after the registry crash fix (section 2) — the +8 are
+  `BLE001` ("do not catch blind exception") on the 8 new
+  `except Exception` clauses in `registry.py`, which is the intentional,
+  correct tradeoff for provider-registration isolation. Still not fixed
+  as part of this quick-fix pass; still needs the dedicated lint-debt
+  session.
 - **`.pre-commit-config.yaml`'s bandit hook referenced a `.bandit` config
   file that did not exist** (`args: ["-c", ".bandit"]`), which meant the
   bandit hook would fail outright for anyone running `pre-commit run
@@ -221,11 +244,18 @@ do with OpenAI.**
 
 ## 7. Process notes for whoever picks this up next
 
-Priority order if you have one dedicated session: (1) the registry
-exception-handling bug in section 2 — it's the one that can silently take
-out the whole library in production, not just in this sandbox; (2) add
-tests for `api.py`/`pricing.py` since that's the feature the README
-leads with and it currently has zero coverage; (3) decide whether the MCP
-subsystem gets real tests + docs or gets removed; (4) curate a real
-`ruff` rule selection and turn lint on in CI once the 291 findings are
-triaged.
+Priority order if you have one dedicated session: ~~(1) the registry
+exception-handling bug in section 2~~ **done 2026-09-22, see section 2**;
+(2) add tests for `api.py`/`pricing.py` since that's the feature the
+README leads with and it currently has zero coverage; (3) decide whether
+the MCP subsystem gets real tests + docs or gets removed; (4) curate a
+real `ruff` rule selection and turn lint on in CI once the (now 299,
+see section 5) findings are triaged; (5) expand `pricing.py`'s
+`PRICING_TABLE` to cover current-generation model families (see section
+5 — existing rows were spot-checked and are accurate, but coverage is
+incomplete); (6) add a bounded timeout around
+`AutoTokenizer.from_pretrained()` in `huggingface_counter.py:71` /
+`opensource_counter.py:102` — assessed in the 2026-09-22 pass as real
+feature work (needs a thread/signal-based timeout wrapper since
+`from_pretrained` has no native timeout param), not a quick fix, so still
+open.

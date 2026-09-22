@@ -2,6 +2,44 @@
 
 All notable changes to PyTokenCalc are documented in this file.
 
+## [Unreleased]
+
+### Fixed
+- **Registry crash on a single tokenizer's construction failure**
+  (`pytokencalc/tokenizers/registry.py`): `TokenCounterRegistry.
+  _register_default_counters` only caught `ImportError` around each
+  provider's construction. `OpenAITokenCounter.__init__`
+  (`pytokencalc/tokenizers/openai_counter.py:66`) raises `RuntimeError`,
+  not `ImportError`, when a tiktoken encoding download fails over the
+  network -- that `RuntimeError` was uncaught, so it propagated out of
+  `TokenCounterRegistry.__init__` and prevented the *entire* registry from
+  constructing, taking down Anthropic/Google/Cohere/HuggingFace/Ollama/
+  custom-provider counting along with OpenAI. This was the root cause of
+  47/100 test failures reproduced during the OSS-standardization audit
+  pass. Fixed by broadening each per-provider `except` clause to
+  `Exception`, so the registry registers what it can and logs/skips what
+  it can't. Regression tests added in `tests/test_registry_resilience.py`.
+- **`pytokencalc/pricing.py`**: `PRICING_LAST_UPDATED` was a stale
+  `"2025-06"` marker. Spot-checked the existing table's entries against
+  current OpenAI/Anthropic pricing pages (2026-09) -- the listed
+  legacy-model rates are still accurate -- and updated the marker to
+  `"2026-09"` with a note that the table's *existing* rows are verified,
+  not that coverage of newer model families is complete (that remains a
+  real follow-up, not a quick fix).
+- **README.md** "Known issues": updated the tiktoken/registry crash entry
+  to reflect the fix above (was previously documented as an open bug), and
+  corrected the stale `ruff` finding count (291 -> 299; the +8 is the
+  intentional broad `except Exception` clauses from the fix above, each
+  flagged `BLE001`).
+
+### Removed
+- **Unused `pydantic>=2.0` dependency** (`pyproject.toml`,
+  `requirements-lock.txt`): `grep -rn "from pydantic\|import pydantic"
+  pytokencalc/` returned zero matches; it was declared but never used
+  anywhere in the package. Confirmed `pytokencalc` still imports and
+  `count_tokens()`/`estimate_cost()` still work with pydantic absent from
+  the environment before removing it.
+
 ## [1.2.0]
 
 ### Added

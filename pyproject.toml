@@ -45,9 +45,7 @@ classifiers = [
     "Topic :: Utilities",
 ]
 
-dependencies = [
-    "pydantic>=2.0",  # Data validation
-]
+dependencies = []
 
 [project.optional-dependencies]
 # Local tokenizers (Phase 1) - for token counting support

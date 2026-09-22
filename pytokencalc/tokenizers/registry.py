@@ -31,54 +31,65 @@ class TokenCounterRegistry:
         self._register_default_counters()
 
     def _register_default_counters(self):
-        """Register built-in token counters"""
-        # Try to register each counter; skip if dependency not available
+        """Register built-in token counters.
+
+        Each counter is registered independently: a construction failure for
+        one provider (missing optional dependency, or something like
+        OpenAITokenCounter's eager tiktoken encoding download hitting a
+        network hiccup and raising RuntimeError) must not prevent the other
+        providers from being registered, and must not prevent
+        TokenCounterRegistry.__init__ from completing. We therefore catch
+        `Exception` broadly here (not just `ImportError`) around each
+        individual registration -- the registry's job is to register what it
+        can and log/skip what it can't, not to crash entirely because one
+        provider's constructor blew up.
+        """
         try:
             self.register("openai", OpenAITokenCounter())
             logger.info("Registered OpenAI token counter (tiktoken)")
-        except ImportError as e:
+        except Exception as e:
             logger.warning(f"OpenAI counter unavailable: {e}")
 
         try:
             self.register("huggingface", HuggingFaceTokenCounter())
             logger.info("Registered HuggingFace token counter (transformers)")
-        except ImportError as e:
+        except Exception as e:
             logger.warning(f"HuggingFace counter unavailable: {e}")
 
         try:
             self.register("anthropic", AnthropicTokenCounter())
             logger.info("Registered Anthropic token counter")
-        except ImportError as e:
+        except Exception as e:
             logger.warning(f"Anthropic counter unavailable: {e}")
 
         try:
             self.register("google", GoogleTokenCounter())
             logger.info("Registered Google token counter")
-        except ImportError as e:
+        except Exception as e:
             logger.warning(f"Google counter unavailable: {e}")
 
         try:
             self.register("cohere", CohereTokenCounter())
             logger.info("Registered Cohere token counter")
-        except ImportError as e:
+        except Exception as e:
             logger.warning(f"Cohere counter unavailable: {e}")
 
         try:
             self.register("azure", AzureOpenAITokenCounter())
             logger.info("Registered Azure OpenAI token counter")
-        except ImportError as e:
+        except Exception as e:
             logger.warning(f"Azure OpenAI counter unavailable: {e}")
 
         try:
             self.register("opensource", OpenSourceTokenCounter())
             logger.info("Registered open-source model token counter")
-        except ImportError as e:
+        except Exception as e:
             logger.warning(f"Open-source counter unavailable: {e}")
 
         try:
             self.register("ollama", OllamaTokenCounter())
             logger.info("Registered Ollama token counter")
-        except (ImportError, RuntimeError) as e:
+        except Exception as e:
             logger.warning(f"Ollama counter unavailable: {e}")
 
     def register(self, provider: str, counter: TokenCounter):

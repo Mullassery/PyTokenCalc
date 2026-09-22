@@ -5,8 +5,6 @@
 # To use: pip install -r requirements-lock.txt
 # For development: pip install -r requirements-lock.txt && pip install -e ".[dev]"
 
-pydantic>=2.0,<3.0
-
 # LLM Providers (only import these if you use the corresponding counter)
 anthropic>=0.20.0,<1.0
 openai>=1.0.0,<2.0

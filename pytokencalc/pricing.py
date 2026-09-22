@@ -22,7 +22,18 @@ To update: edit PRICING_TABLE below and bump PRICING_LAST_UPDATED.
 from typing import Dict, NamedTuple, Optional
 
 # Bump this whenever PRICING_TABLE is edited.
-PRICING_LAST_UPDATED = "2025-06"
+#
+# Spot-checked 2026-09: the entries below (gpt-4o at $2.50/$10.00 per
+# million, claude-3-5-sonnet at $3.00/$15.00 per million, etc.) still match
+# each provider's published rates for these specific model IDs as of this
+# check -- OpenAI and Anthropic have kept the older model families at their
+# original prices even as newer defaults launched. What this table does NOT
+# have is entries for the current-generation model families that have
+# shipped since 2025-06 (e.g. newer GPT-4.1/GPT-5-era and Claude 4-era
+# models) -- adding those is real data-entry + verification work, out of
+# scope for this quick-fix pass. Treat "last updated" as "existing rows
+# verified accurate," not "table is complete."
+PRICING_LAST_UPDATED = "2026-09"
 
 
 class ModelPricing(NamedTuple):
