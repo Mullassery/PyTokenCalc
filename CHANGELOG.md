@@ -4,6 +4,8 @@ All notable changes to PyTokenCalc are documented in this file.
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-09-22
+
 ### Fixed
 - **Registry crash on a single tokenizer's construction failure**
   (`pytokencalc/tokenizers/registry.py`): `TokenCounterRegistry.

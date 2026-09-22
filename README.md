@@ -172,4 +172,4 @@ This project is licensed under the [Apache License 2.0](LICENSE).
 
 ---
 
-**PyTokenCalc v1.2.0** | Python 3.9+
+**PyTokenCalc v1.2.1** | Python 3.9+
