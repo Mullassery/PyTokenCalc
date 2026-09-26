@@ -150,10 +150,11 @@ Japanese, Chinese, mixed code+CJK, a 22.5KB repeated-phrase block):
 system-load noise -- this machine had other background jobs running during
 measurement, and non-interleaved back-to-back blocks swung between "PyTokenCalc
 faster" and "tiktoken faster" run to run purely from load drift) over a
-22.5KB block: tiktoken **1.35ms** median/call, PyTokenCalc **1.42ms**
-median/call -- **~5% wrapper overhead**, not a speedup. That's the honest
-number; don't trust any single non-interleaved timing on a loaded machine,
-including earlier drafts of this benchmark.
+22.5KB block: tiktoken **~1.3-1.8ms** median/call, PyTokenCalc
+**~1.4-1.9ms** median/call across repeated runs -- consistently a
+**small (roughly 2-5%) wrapper overhead**, not a speedup. That's the
+honest number; don't trust any single non-interleaved timing on a loaded
+machine, including earlier drafts of this benchmark.
 
 **Where PyTokenCalc adds real value tiktoken alone doesn't provide** --
 verified, not just claimed: its `StreamingTokenCounter` (for counting
