@@ -125,6 +125,52 @@ Google, and Cohere counting makes a live network call to the provider's
 API, so latency there is dominated by that round trip (with response
 caching to avoid repeat calls for identical input).
 
+### vs tiktoken, on real text
+
+For OpenAI models, PyTokenCalc *is* `tiktoken` under the hood (see
+[`openai_counter.py`](pytokencalc/tokenizers/openai_counter.py)), so this
+isn't a "which tokenizer is right" contest -- it's a correctness check on
+the wrapper (does it ever diverge from the ground truth it wraps?) plus an
+honest measurement of the wrapper's own overhead.
+
+**Correctness**, `gpt-4o` (`o200k_base`) and `gpt-4` (`cl100k_base`), against
+real, live-fetched text -- four real READMEs/articles (Flask's, Requests',
+PyTorch's, and the full English Wikipedia "Artificial intelligence" article,
+121KB combined) plus six adversarial edge cases (empty string, emoji,
+Japanese, Chinese, mixed code+CJK, a 22.5KB repeated-phrase block):
+
+| | tiktoken (ground truth) | PyTokenCalc |
+|---|---|---|
+| Real-corpus exact matches | 8/8 | 8/8 |
+| Edge-case exact matches | 6/6 | 6/6 |
+| **Total exact match rate** | -- | **14/14 (100%)** |
+
+**Speed**, warm (both encoders pre-loaded), 200 *interleaved* iterations
+(alternating tiktoken/PyTokenCalc calls each iteration so both see the same
+system-load noise -- this machine had other background jobs running during
+measurement, and non-interleaved back-to-back blocks swung between "PyTokenCalc
+faster" and "tiktoken faster" run to run purely from load drift) over a
+22.5KB block: tiktoken **1.35ms** median/call, PyTokenCalc **1.42ms**
+median/call -- **~5% wrapper overhead**, not a speedup. That's the honest
+number; don't trust any single non-interleaved timing on a loaded machine,
+including earlier drafts of this benchmark.
+
+**Where PyTokenCalc adds real value tiktoken alone doesn't provide** --
+verified, not just claimed: its `StreamingTokenCounter` (for counting
+tokens as an LLM response streams in) recomputes against the full
+accumulated text on each chunk rather than naively summing per-chunk
+counts in isolation. On a real 148-character string chopped into 3-byte
+SSE-style chunks (englishtext + 日本語 + an emoji, deliberately split
+mid-token), the correct whole-text count is 30 tokens; PyTokenCalc's
+streaming counter matches it exactly (30), while the naive
+sum-each-chunk-separately approach it explicitly guards against would have
+overcounted by **34 tokens (more than double)** -- a real, reproducible BPE
+chunk-boundary error PyTokenCalc avoids and raw per-chunk `tiktoken` calls
+would not.
+
+Reproduce: [`docs/bench/tiktoken_comparison.py`](docs/bench/tiktoken_comparison.py)
+fetches the same live sources and re-runs all of the above.
+
 ---
 
 ## Installation

@@ -4,6 +4,15 @@ All notable changes to PyTokenCalc are documented in this file.
 
 ## [Unreleased]
 
+### Added
+- README "vs tiktoken" section with a reproducible real-data correctness
+  and speed comparison (`docs/bench/tiktoken_comparison.py`): 14/14 exact
+  token-count matches against tiktoken on real corpora and adversarial
+  edge cases, ~2.4% wrapper overhead (warm), and a demonstration of
+  `StreamingTokenCounter` avoiding a real BPE chunk-boundary overcount
+  (34 tokens on a 148-character mixed-script string) that naive
+  per-chunk summation would produce.
+
 ## [1.2.1] - 2026-09-22
 
 ### Fixed
