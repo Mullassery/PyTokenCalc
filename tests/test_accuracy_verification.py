@@ -18,8 +18,8 @@ Acceptance Criteria:
 import os
 
 import pytest
+
 from pytokencalc.tokenizers import TokenCounterRegistry
-from typing import List, Dict, Any
 
 # Note: Ollama requires local instance running (ollama serve)
 # Tests gracefully skip if Ollama not available
@@ -177,7 +177,10 @@ class TestOpenAIAccuracy:
         whitespace = registry.count_tokens("gpt-4o", "   \n\t   ").input_tokens
 
         assert empty == 0, "Empty text should have 0 tokens"
-        # Whitespace may produce 0 or 1 token depending on tokenizer
+        # Whitespace-only text is not empty; it tokenizes to a small,
+        # tokenizer-dependent count (o200k_base gives 2 for "   \n\t   ").
+        assert isinstance(whitespace, int)
+        assert whitespace < 10, f"Whitespace-only text should be tiny, got {whitespace}"
 
 
 class TestAzureOpenAIAccuracy:
@@ -369,8 +372,9 @@ class TestTemporalVariations:
 
     def test_token_result_includes_timestamp(self):
         """Verify TokenCountResult includes timestamp for tracking"""
-        from pytokencalc.tokenizers import TokenCountResult
         from datetime import datetime
+
+        from pytokencalc.tokenizers import TokenCountResult
 
         result = TokenCountResult(
             input_tokens=100,
@@ -444,8 +448,6 @@ class TestTemporalVariations:
         """Document expected token count variance over time"""
         from pytokencalc.tokenizers import TokenCountResult
 
-        text = "Hello world"
-
         # Session 1: Initial count
         session1_results = [
             TokenCountResult(
@@ -490,21 +492,17 @@ class TestTemporalVariations:
 
         # Multiple calls to same provider
         results = []
-        for i in range(3):
+        for _ in range(3):
             result = registry.count_tokens("gpt-4o", text)
             results.append(result)
 
             # Verify timestamp is set
             assert result.timestamp is not None
 
-        # Latency may vary between calls
-        latencies = [r.latency_ms for r in results]
-
-        # First call often slower (cold cache/connection)
-        # Subsequent calls faster (warm)
-        # But can still vary due to system load
-
-        # All results are valid - don't assume consistency
+        # Latency may vary between calls: first call often slower (cold
+        # cache/connection), subsequent calls faster (warm), but it can still
+        # vary with system load. All results are valid - don't assume a
+        # consistent latency.
         for result in results:
             assert result.input_tokens > 0, "Should have token count"
             assert result.latency_ms >= 0, "Should have latency"
@@ -525,7 +523,8 @@ class TestTemporalVariations:
         # Analyze per-session
         for session_id, tokens in sessions.items():
             session_avg = sum(tokens) / len(tokens)
-            # Track session average separately
+            # Track session average separately (never mix across sessions)
+            assert session_avg > 0, f"Session {session_id} should have a positive average"
 
         # This reveals backend changes between sessions
         session1_avg = sum(sessions["session-1"]) / len(sessions["session-1"])
@@ -553,8 +552,8 @@ class TestCustomProviderSupport:
         """Verify custom providers can be registered"""
         from pytokencalc.tokenizers.custom_provider_counter import (
             CustomProviderCounter,
-            register_custom_provider,
             get_custom_provider,
+            register_custom_provider,
         )
 
         # Create custom provider (don't verify accessibility for test)
@@ -805,8 +804,7 @@ class TestPlatformTokenDifferences:
 
         # Both should be separate, never aggregated
         results = [result_openai]
-        providers = set(r.provider for r in results)
-        models = set(r.model for r in results)
+        providers = {r.provider for r in results}
 
         # Each combination is unique
         assert len(providers) == len(results), "Each result has distinct provider"
@@ -1034,6 +1032,8 @@ class TestOpenSourceAccuracy:
         except ImportError:
             pytest.skip("transformers not installed")
 
+        from pytokencalc.tokenizers._timeout import call_with_timeout
+
         registry = TokenCounterRegistry()
         text = TEST_SAMPLES["english_medium"]["text"]
 
@@ -1041,8 +1041,12 @@ class TestOpenSourceAccuracy:
             # Get count from PyTokenCalc
             pytokencalc_result = registry.count_tokens("falcon-7b", text)
 
-            # Get official count from HuggingFace
-            tokenizer = AutoTokenizer.from_pretrained("tiiuae/falcon-7b")
+            # Get official count from HuggingFace. Bounded so an uncached
+            # model + unreachable Hub can't block the suite for the full OS
+            # TCP connect timeout (see ROADMAP_HONEST.md section 3).
+            tokenizer = call_with_timeout(
+                AutoTokenizer.from_pretrained, 30.0, "tiiuae/falcon-7b"
+            )
             official_count = len(tokenizer.encode(text))
 
             # Should match exactly (same tokenizer)
@@ -1056,6 +1060,8 @@ class TestOpenSourceAccuracy:
         """Verify dynamic model discovery works for HuggingFace"""
         registry = TokenCounterRegistry()
         counter = registry.get_counter("opensource")
+        if counter is None:
+            pytest.skip("opensource counter unavailable (transformers not installed)")
 
         # Should accept known aliases
         assert counter.validate_model("falcon-7b"), "Should validate known alias"

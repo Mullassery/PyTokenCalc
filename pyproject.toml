@@ -7,7 +7,7 @@ include = ["pytokencalc", "pytokencalc.*"]
 
 [project]
 name = "pytokencalc"
-version = "1.2.1"
+version = "1.3.0"
 description = "Universal token counting for ANY LLM with embedded StatGuardian quality validation: 8 cloud providers, 7 local inference engines, custom/proprietary models, and BYOM (Bring Your Own Model). Pattern-based forward-compatibility, model discovery, platform-aware tracking, 99%+ accuracy."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -82,6 +82,27 @@ target-version = ["py39", "py310", "py311", "py312"]
 [tool.ruff]
 line-length = 100
 target-version = "py39"
+
+[tool.ruff.lint]
+# Curated rule selection (2026-10-11). Deliberately explicit rather than
+# relying on ruff's implicit default, which grows between releases and can
+# silently add new failing rules on upgrade. `ruff check .` is clean against
+# exactly this set and runs in CI (see .github/workflows/ci.yml).
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes (unused imports/vars, undefined names)
+    "W",   # pycodestyle warnings
+    "I",   # isort (import ordering)
+    "B",   # flake8-bugbear (likely bugs / design problems)
+    "C4",  # flake8-comprehensions
+    "PIE", # flake8-pie
+    "SIM", # flake8-simplify
+]
+ignore = [
+    # Formatting is owned by black (line-length = 100 above); enforcing
+    # E501 here too would just duplicate the formatter's job.
+    "E501",
+]
 
 [project.scripts]
 pytokencalc = "pytokencalc.cli:main"

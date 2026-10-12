@@ -6,9 +6,9 @@ Local providers change rapidly - new ones appear, old ones update APIs.
 This counter uses a unified interface for common local inference patterns.
 """
 
-from typing import List, Dict, Any, Optional
-import time
 import logging
+import time
+from typing import Any, Dict, List, Optional
 
 from .base import TokenCounter, TokenCountResult
 
@@ -95,6 +95,7 @@ class LocalInferenceTokenCounter(TokenCounter):
         self.provider_urls = provider_urls or {}
         self.detected_provider = None
         self.detected_base_url = None
+        self.detected_api_path = None
 
         # Try to detect available local provider
         self._detect_provider()
@@ -111,6 +112,7 @@ class LocalInferenceTokenCounter(TokenCounter):
                 if response.status_code == 200:
                     self.detected_provider = provider_name
                     self.detected_base_url = base_url
+                    self.detected_api_path = api_path
                     logger.info(f"Detected local inference provider: {provider_name} at {base_url}")
                     return
             except Exception:
@@ -173,10 +175,11 @@ class LocalInferenceTokenCounter(TokenCounter):
             )
 
         try:
-            # Use OpenAI-compatible API format
-            # Most local providers support /v1/completions endpoint
+            # Use the provider's OpenAI-compatible completions path (e.g.
+            # lm-studio uses /api/v1/completions; the others use
+            # /v1/completions). Falls back to /v1/completions.
             response = requests.post(
-                f"{self.detected_base_url}/v1/completions",
+                f"{self.detected_base_url}{self.detected_api_path or '/v1/completions'}",
                 json={
                     "model": model,
                     "prompt": text,
@@ -204,7 +207,9 @@ class LocalInferenceTokenCounter(TokenCounter):
                 token_count = len(text) // 4 + 1
 
         except Exception as e:
-            raise RuntimeError(f"Failed to count tokens with local provider for {model}: {e}")
+            raise RuntimeError(
+                f"Failed to count tokens with local provider for {model}: {e}"
+            ) from e
 
         latency_ms = (time.time() - start_time) * 1000
 

@@ -18,9 +18,9 @@ Architecture: Progressive discovery
 5. Help users find/setup the right provider
 """
 
-from typing import List, Dict, Optional, Tuple
 import logging
 import re
+from typing import Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 

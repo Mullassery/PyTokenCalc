@@ -1,9 +1,9 @@
 """REST API server for PyTokenCalc - multi-provider token counter workflow integration."""
 
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 from ._version import __version__
-from .tokenizers import TokenCounterRegistry, TokenCounterCache
+from .tokenizers import TokenCounterCache, TokenCounterRegistry
 
 
 class PyTokenCalcServer:
@@ -128,11 +128,11 @@ class PyTokenCalcServer:
 def create_flask_app(server: Optional[PyTokenCalcServer] = None):
     """Create Flask app for REST API."""
     try:
-        from flask import Flask, request, jsonify
+        from flask import Flask, jsonify, request
     except ImportError:
         raise ImportError(
             "Flask is required for REST API. Install with: pip install flask"
-        )
+        ) from None
 
     app = Flask(__name__)
     srv = server or PyTokenCalcServer()

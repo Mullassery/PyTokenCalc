@@ -3,9 +3,9 @@ OpenAI token counter using tiktoken.
 Provides 100% accurate token counting for GPT-4, GPT-4o, and GPT-3.5 models.
 """
 
-from typing import List, Dict, Any
 import logging
 import time
+from typing import Any, Dict, List
 
 from .base import TokenCounter, TokenCountResult
 from .encoding_fingerprint import check_drift
@@ -63,7 +63,7 @@ class OpenAITokenCounter(TokenCounter):
             self.encodings["cl100k_base"] = tiktoken.get_encoding("cl100k_base")
             self.encodings["o200k_base"] = tiktoken.get_encoding("o200k_base")
         except Exception as e:
-            raise RuntimeError(f"Failed to load tiktoken encodings: {e}")
+            raise RuntimeError(f"Failed to load tiktoken encodings: {e}") from e
 
         for encoding in self.encodings.values():
             self._check_and_record_drift(encoding)
@@ -146,16 +146,12 @@ class OpenAITokenCounter(TokenCounter):
         """Check if model is supported"""
         model_lower = model.lower()
 
-        for pattern in self.MODEL_TO_ENCODING.keys():
+        for pattern in self.MODEL_TO_ENCODING:
             if model_lower.startswith(pattern):
                 return True
 
         # Pattern-based matching
-        for pattern in ["gpt-4", "gpt-3.5", "text-davinci"]:
-            if pattern in model_lower:
-                return True
-
-        return False
+        return any(pattern in model_lower for pattern in ["gpt-4", "gpt-3.5", "text-davinci"])
 
     def get_tokenizer_info(self) -> Dict[str, Any]:
         """Return tiktoken version info"""

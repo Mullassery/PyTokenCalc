@@ -36,19 +36,20 @@ Custom Providers: https://github.com/Mullassery/PyTokenCalc/blob/main/CUSTOM_PRO
 """
 
 from ._version import __version__
+
 __author__ = "Georgi Mammen Mullassery"
 
 # Top-level ergonomic API (v1.1.0+): count_tokens() -> int, estimate_cost() -> USD
 from .api import count_tokens, estimate_cost
-from .pricing import get_model_pricing, PRICING_TABLE, PRICING_LAST_UPDATED
+from .pricing import PRICING_LAST_UPDATED, PRICING_TABLE, get_model_pricing
 
 # Token counting (v0.7+: Multi-provider token counter)
 try:
     from .tokenizers import (
         TokenCounter,
-        TokenCountResult,
-        TokenCounterRegistry,
         TokenCounterCache,
+        TokenCounterRegistry,
+        TokenCountResult,
         get_global_registry,
     )
     TOKENIZERS_AVAILABLE = True
@@ -61,40 +62,42 @@ except ImportError:
     get_global_registry = None
 
 # Model discovery
-from .model_discovery import ModelDiscovery
-
-# Exceptions
-from .exceptions import (
-    PyTokenCalcError,
-    ValidationError,
-    TokenCountError,
-    ModelNotSupportedError,
-    APIError,
-    CacheError,
-)
-
-# StatGuardian integration (quality validation, cost prediction, etc.)
-from .statguardian_integration import (
-    TokenCountValidation,
-    TokenCountContract,
-    ModelEfficiencyContract,
-    CostPredictionContract,
-    ProviderReliabilityContract,
-    StatGuardianTokenCounter,
-)
-
-# OKF integration (token baselines, optimization)
-from .okf_token_baselines import TokenBaseline, OKFTokenBaselines
-
-# Server and CLI
-from .server import PyTokenCalcServer
-from .cli import CLIInterface
-from .quick_cli import QuickCLI
-
 # MCP 2.0 Support (v1.0.3+)
 from pytokencalc._mcp_connector import TokenCalculator
 
+from .cli import CLIInterface
+
+# Exceptions
+from .exceptions import (
+    APIError,
+    CacheError,
+    ModelNotSupportedError,
+    PyTokenCalcError,
+    TokenCountError,
+    ValidationError,
+)
+from .model_discovery import ModelDiscovery
+
+# OKF integration (token baselines, optimization)
+from .okf_token_baselines import OKFTokenBaselines, TokenBaseline
+from .quick_cli import QuickCLI
+
+# Server and CLI
+from .server import PyTokenCalcServer
+
+# StatGuardian integration (quality validation, cost prediction, etc.)
+from .statguardian_integration import (
+    CostPredictionContract,
+    ModelEfficiencyContract,
+    ProviderReliabilityContract,
+    StatGuardianTokenCounter,
+    TokenCountContract,
+    TokenCountValidation,
+)
+
 __all__ = [
+    # Package version
+    "__version__",
     # Top-level ergonomic API
     "count_tokens",
     "estimate_cost",

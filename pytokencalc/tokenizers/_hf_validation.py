@@ -60,7 +60,7 @@ def looks_like_hf_repo_id(model_id: str) -> bool:
         return False
     if ".." in model_id or "\\" in model_id:
         return False
-    if model_id.startswith("/") or model_id.startswith("~"):
+    if model_id.startswith(("/", "~")):
         return False
     return bool(_HF_REPO_ID_PATTERN.match(model_id))
 

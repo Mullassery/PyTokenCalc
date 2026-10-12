@@ -1,7 +1,7 @@
 """Quick CLI for PyTokenCalc - one-liner token counting from the terminal."""
 
-import sys
 import json
+import sys
 from typing import Optional
 
 from .tokenizers import TokenCounterRegistry

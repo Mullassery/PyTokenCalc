@@ -3,8 +3,8 @@ Google Gemini token counter.
 Provides token counting for Gemini models (Pro, Ultra, Nano).
 """
 
-from typing import List, Dict, Any
 import time
+from typing import Any, Dict, List
 
 from .base import TokenCounter, TokenCountResult
 
@@ -68,7 +68,7 @@ class GoogleTokenCounter(TokenCounter):
             response = model_obj.count_tokens(text)
             token_count = response.total_tokens
         except Exception as e:
-            raise RuntimeError(f"Failed to count tokens for {model}: {e}")
+            raise RuntimeError(f"Failed to count tokens for {model}: {e}") from e
 
         latency_ms = (time.time() - start_time) * 1000
 

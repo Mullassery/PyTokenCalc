@@ -26,7 +26,7 @@ def single_count_example():
     result = registry.count_tokens("gpt-4o", text)
 
     print(f"\nText: {text}")
-    print(f"Model: gpt-4o")
+    print("Model: gpt-4o")
     print(f"Tokens: {result.input_tokens}")
     print(f"Source: {result.source}")  # 'local' for GPT, 'api' for Claude, etc.
     print(f"Latency: {result.latency_ms:.1f}ms")
@@ -83,7 +83,7 @@ def caching_example():
     print(f"  Cached: {result1.cached}")
 
     # Second call: CACHED (instant!)
-    print(f"\nSecond call (same model + text):")
+    print("\nSecond call (same model + text):")
     result2 = registry.count_tokens(model, text)
     print(f"  Tokens: {result2.input_tokens}")
     print(f"  Source: {result2.source}")
@@ -139,13 +139,13 @@ def smart_routing_example():
     print("-" * 65)
 
     models = {
-        "gpt-4o": ("Local (tiktoken)", "5-10ms"),
-        "llama-70b": ("Local (HF transformers)", "8-15ms"),
-        "claude-3-5-sonnet": ("Cached API", "200ms→1ms"),
-        "gemini-2-flash": ("Cached API", "200ms→1ms"),
+        "gpt-4o": "Local (tiktoken)",
+        "llama-70b": "Local (HF transformers)",
+        "claude-3-5-sonnet": "Cached API",
+        "gemini-2-flash": "Cached API",
     }
 
-    for model, (strategy, latency) in models.items():
+    for model, strategy in models.items():
         result = registry.count_tokens(model, text)
         print(f"{model:<25} {strategy:<20} {result.latency_ms:>9.1f}ms {result.source:<8}")
 

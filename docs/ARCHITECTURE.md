@@ -33,12 +33,14 @@ flowchart TD
 
     Pricing["pricing.py\nstatic USD/1M-token table"] --> API
 
-    subgraph Experimental["Experimental, undocumented, untested (see below)"]
+    subgraph MCPLayer["MCP tool surface (rebuilt 2026-10; no transport in-package)"]
         direction TB
-        MCPConn["_mcp_connector.py: TokenCalculator"]
-        MCPTools["_mcp_tools.py: 12 tool schemas"]
+        MCPConn["_mcp_connector.py: TokenCalculator facade"]
+        MCPTools["_mcp_tools.py: 12 real tool schemas + handlers"]
         MCPConn --> MCPTools
     end
+    Pricing --> MCPTools
+    Registry --> MCPTools
 ```
 
 ## Request flow
@@ -81,8 +83,8 @@ pytokencalc/
 ├── server.py                  # optional Flask REST server
 ├── statguardian_integration.py# quality-contract validation (see caveat below)
 ├── okf_token_baselines.py     # token-count baseline/ratio estimation
-├── _mcp_connector.py          # experimental MCP tool-server connector
-├── _mcp_tools.py               # experimental MCP tool schema definitions
+├── _mcp_connector.py          # MCP tool surface facade (real; no transport)
+├── _mcp_tools.py              # MCP tool schemas + real handlers (12 tools)
 └── tokenizers/
     ├── base.py                # TokenCounter / TokenCountResult ABC
     ├── registry.py             # provider auto-detection + routing
@@ -98,18 +100,20 @@ pytokencalc/
 
 ## Known architectural gaps (honest, not aspirational)
 
-- **MCP subsystem is dead weight in the current package.** `TokenCalculator`
-  (from `_mcp_connector.py`) is exported at the top level
-  (`from pytokencalc import TokenCalculator`) and documented nowhere in
-  README.md or docs/API.md. It has **zero test coverage** (no
-  `test_mcp*.py` in `tests/`). Its "real" code path
-  (`BaseMCPConnector.start_mcp_connector`) shells out to a `dab` binary
-  that is not a dependency of this package and is not documented anywhere
-  as a prerequisite; if `dab` isn't on `PATH`, or the optional
-  `statguardian` package isn't installed, this silently falls back to an
-  in-tree stub connector. Nobody outside this reviewer's pass has verified
-  this code works end-to-end. Treat it as unsupported/experimental until
-  it has tests and documentation, or remove it.
+- ~~**MCP subsystem is dead weight in the current package.**~~ **Rebuilt.**
+  `TokenCalculator` (`_mcp_connector.py`) and the handlers in
+  `_mcp_tools.py` were fake stubs (hardcoded `len(text)//4` counts, fixed
+  `0.01`/`0.03` rates, fixed budget/usage numbers) and shipped a connector
+  that shelled out to an external `dab` binary (with a `statguardian`
+  fallback) that is not a dependency of this package. In this pass the fake
+  layer was removed and rebuilt for real: handlers now use the actual
+  `TokenCounterRegistry` for counts and the static `pricing` table for
+  costs, and are covered by `tests/test_mcp_tools.py` (23 tests). There is
+  deliberately **no MCP server/transport** in this package, so
+  `TokenCalculator.start_mcp_connector()` raises `NotImplementedError`
+  instead of reporting a fake endpoint; drive `get_tools()`/`get_handler()`
+  from your own MCP host. Budget tracking and usage analytics are
+  in-memory/process-scoped (PyTokenCalc persists nothing).
 - **No timeout on HuggingFace tokenizer downloads.** Both
   `pytokencalc/tokenizers/huggingface_counter.py:71` and
   `pytokencalc/tokenizers/opensource_counter.py:102` call

@@ -1,7 +1,7 @@
 """Tests for quick CLI."""
 
-import subprocess
 import json
+import subprocess
 import sys
 
 

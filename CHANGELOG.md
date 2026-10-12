@@ -2,16 +2,71 @@
 
 All notable changes to PyTokenCalc are documented in this file.
 
-## [Unreleased]
+## [1.3.0] - 2026-10-11
 
 ### Added
-- README "vs tiktoken" section with a reproducible real-data correctness
-  and speed comparison (`docs/bench/tiktoken_comparison.py`): 14/14 exact
-  token-count matches against tiktoken on real corpora and adversarial
-  edge cases, ~2.4% wrapper overhead (warm), and a demonstration of
-  `StreamingTokenCounter` avoiding a real BPE chunk-boundary overcount
-  (34 tokens on a 148-character mixed-script string) that naive
-  per-chunk summation would produce.
+- `tests/test_mcp_tools.py` (23 tests) covering the MCP tool surface:
+  real token counts via `TokenCounterRegistry`, cost math against the
+  `pricing` table, error/unpriced paths, in-memory budget/usage
+  arithmetic, prompt optimization, and the `TokenCalculator` facade
+  (including a `tiktoken`-gated integration test).
+- `tests/test_pricing_and_api.py` (20 tests): pricing table lookup,
+  prefix/case-insensitive resolution, cost arithmetic, error paths, and
+  the top-level `count_tokens()`/`estimate_cost()` API.
+- `tests/test_server.py` (12 tests): `PyTokenCalcServer` method surface
+  and Flask REST endpoints (Flask-gated).
+- `tests/test_cli.py` (15 tests): `CLIInterface` methods and `main()`
+  argv dispatch.
+- `tests/test_okf_token_baselines.py` (8 tests): save/load round-trip,
+  model comparison, `estimate_cost` (token predictor), zero-input guard.
+- `tests/test_timeout.py` (9 tests): bounded thread-based timeout helper.
+- `pytokencalc/tokenizers/_timeout.py`: `call_with_timeout()` +
+  `resolve_default_timeout()` for capping `AutoTokenizer.from_pretrained()`
+  (no native timeout) — default 30s, overridable via `load_timeout=` or
+  `PYTOKENCALC_HF_TIMEOUT`.
+
+### Fixed
+- **MCP tool surface was a fake stub** (`pytokencalc/_mcp_tools.py`,
+  `pytokencalc/_mcp_connector.py`, `examples/mcp_pytokencalc.py`):
+  handlers returned hardcoded token counts (`len(text) // 4`), fixed
+  per-1k rates (`0.01`/`0.03`), and fabricated budget/usage numbers, and
+  the connector shelled out to an external `dab` binary (with a
+  `statguardian` fallback) that was never a declared dependency. Rebuilt
+  for real: counts come from `TokenCounterRegistry`, costs from
+  `pricing.get_model_pricing`/`PRICING_TABLE`, and budgets/usage from a
+  real in-memory store. `TokenCalculator.start_mcp_connector()` now
+  raises `NotImplementedError` (this package ships no MCP transport)
+  instead of returning a fake endpoint. `examples/mcp_pytokencalc.py`
+  drives the real handler directly.
+- `tests/test_accuracy_verification.py::TestOpenSourceAccuracy::
+  test_dynamic_model_discovery` now `pytest.skip`s when the opensource
+  counter isn't registered (no `transformers` installed) instead of
+  raising `AttributeError` on `None.validate_model`, matching the skip
+  convention used by the other optional-dependency tests in the file.
+- **HuggingFace tokenizer download timeout** (ROADMAP_HONEST.md §3/§7):
+  `count_tokens(text, model=<huggingface-or-fallback model>)` no longer
+  blocks for the OS TCP connect timeout on an uncached model + unreachable
+  Hub. Both `HuggingFaceTokenCounter` and `OpenSourceTokenCounter` now
+  wrap `AutoTokenizer.from_pretrained()` with a thread-based timeout
+  (default 30s), raising `RuntimeError` on timeout. Covered by
+  `tests/test_timeout.py`; the falcon accuracy test uses the same helper.
+- **ZeroDivisionError in `OKFTokenBaselines.estimate_cost()`** when a
+  historical baseline had `avg_input_tokens == 0`; now returns the raw
+  `input_tokens` instead of crashing.
+- **B904 bare raises**: all `except Exception as e: raise RuntimeError(...)`
+  sites now use `raise ... from e` for proper exception chaining.
+- **Unused imports/variables** (F401, F841), `set()` comprehension
+  rewrites (C401), `SIM`/`PIE` simplifications, import ordering (I001).
+- **Lint enforced in CI**: `pyproject.toml` gained explicit curated
+  `[tool.ruff.lint] select = ["E","F","W","I","B","C4","PIE","SIM"]`
+  (`E501` ignored, owned by black); `.github/workflows/ci.yml` added
+  `lint` job running `ruff check .`, which is clean.
+- **README.md "Known issues"**: all three prior open bullets
+  (HuggingFace timeout, MCP fake stub, missing pricing/api tests) now
+  marked **Fixed**; lint bullet updated to reflect CI-enforced curated
+  rule set.
+
+## [Unreleased]
 
 ## [1.2.1] - 2026-09-22
 

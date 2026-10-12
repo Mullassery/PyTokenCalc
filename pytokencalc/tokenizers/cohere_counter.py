@@ -3,8 +3,8 @@ Cohere token counter.
 Provides token counting for Cohere models (Command, Command Light, etc).
 """
 
-from typing import List, Dict, Any
 import time
+from typing import Any, Dict, List
 
 from .base import TokenCounter, TokenCountResult
 
@@ -67,7 +67,7 @@ class CohereTokenCounter(TokenCounter):
             response = self.client.tokenize(text=text)
             token_count = len(response.tokens)
         except Exception as e:
-            raise RuntimeError(f"Failed to count tokens for {model}: {e}")
+            raise RuntimeError(f"Failed to count tokens for {model}: {e}") from e
 
         latency_ms = (time.time() - start_time) * 1000
 

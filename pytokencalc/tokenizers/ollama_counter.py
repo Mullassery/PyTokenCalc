@@ -4,9 +4,9 @@ Provides token counting for models running in Ollama (local LLM inference engine
 Supports dynamic model discovery - any model in Ollama is automatically supported.
 """
 
-from typing import List, Dict, Any, Optional
-import time
 import logging
+import time
+from typing import Any, Dict, List, Optional
 
 from .base import TokenCounter, TokenCountResult
 
@@ -185,7 +185,7 @@ class OllamaTokenCounter(TokenCounter):
                 token_count = len(text) // 4 + 1
 
         except Exception as e:
-            raise RuntimeError(f"Failed to count tokens with Ollama for {model}: {e}")
+            raise RuntimeError(f"Failed to count tokens with Ollama for {model}: {e}") from e
 
         latency_ms = (time.time() - start_time) * 1000
 

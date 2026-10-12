@@ -1,24 +1,38 @@
-"""Example: PyTokenCalc MCP 2.0 Integration"""
+"""Example: PyTokenCalc MCP tool surface.
+
+This shows the real MCP tool schemas and handlers. PyTokenCalc does not ship
+an MCP server/transport (the old implementation tried to shell out to an
+external ``dab`` binary that is not a dependency), so you drive the handler
+from your own MCP host. Here we call it directly.
+"""
 
 import asyncio
+
 from pytokencalc import TokenCalculator
 
+
 async def main():
-    # Initialize with MCP 2.0 support
     calc = TokenCalculator()
+    handler = calc.get_handler()
 
-    # Start MCP connector (requires the `statguardian` package for the real
-    # DAB-backed connector; falls back to the bundled stub otherwise)
-    mcp_url = calc.start_mcp_connector()
-    print(f"✓ PyTokenCalc MCP 2.0 running at {mcp_url}")
+    tools = calc.get_tools()
+    print(f"PyTokenCalc exposes {len(tools)} MCP tools: {', '.join(sorted(tools))}")
 
-    # Keep server running
-    try:
-        while True:
-            await asyncio.sleep(1)
-    except KeyboardInterrupt:
-        calc.stop_mcp_connector()
-        print("✓ MCP server stopped")
+    # Real token count (requires the model's tokenizer dependency, e.g.
+    # `pip install pytokencalc[tokenizers]` for OpenAI/tiktoken).
+    counted = await handler.count_tokens("Tell me a short story", "gpt-4o")
+    print("count_tokens:", counted)
+
+    # Real cost estimate from the static pricing table.
+    if counted.get("input_tokens"):
+        cost = await handler.estimate_cost(
+            counted["input_tokens"], output_tokens=200, model_name="gpt-4o"
+        )
+        print("estimate_cost:", cost)
+
+    # Pricing is available with no tokenizer installed at all.
+    print("get_model_pricing:", await handler.get_model_pricing("claude-3-5-sonnet"))
+
 
 if __name__ == "__main__":
     asyncio.run(main())

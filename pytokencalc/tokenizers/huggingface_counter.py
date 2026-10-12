@@ -3,11 +3,12 @@ HuggingFace Transformers token counter.
 Supports 1000+ models: Llama, Mistral, Qwen, etc.
 """
 
-from typing import List, Dict, Any, Optional
 import time
+from typing import Any, Dict, List
 
-from .base import TokenCounter, TokenCountResult
 from ._hf_validation import validate_model_id_for_from_pretrained
+from ._timeout import call_with_timeout, resolve_default_timeout
+from .base import TokenCounter, TokenCountResult
 
 try:
     from transformers import AutoTokenizer
@@ -36,13 +37,17 @@ class HuggingFaceTokenCounter(TokenCounter):
         "qwen-72b": "Qwen/Qwen-72B",
     }
 
-    def __init__(self):
+    def __init__(self, load_timeout: float = None):
         if not HF_AVAILABLE:
             raise ImportError(
                 "transformers is required for HuggingFace token counting. "
                 "Install: pip install transformers torch sentencepiece"
             )
 
+        # Ceiling (seconds) for a single tokenizer download/load. Prevents
+        # count_tokens() from hanging for the full OS TCP connect timeout on
+        # an uncached model ID. Overridable via PYTOKENCALC_HF_TIMEOUT.
+        self.load_timeout = load_timeout or resolve_default_timeout()
         self.tokenizers = {}  # Cache loaded tokenizers
 
     def _resolve_model_id(self, model: str) -> str:
@@ -68,12 +73,23 @@ class HuggingFaceTokenCounter(TokenCounter):
 
         if model_id not in self.tokenizers:
             try:
-                self.tokenizers[model_id] = AutoTokenizer.from_pretrained(model_id)
+                self.tokenizers[model_id] = call_with_timeout(
+                    AutoTokenizer.from_pretrained,
+                    self.load_timeout,
+                    model_id,
+                )
+            except TimeoutError as e:
+                raise RuntimeError(
+                    f"Timed out loading tokenizer for {model_id} after "
+                    f"{self.load_timeout:g}s. The model may be uncached and "
+                    f"HuggingFace Hub unreachable; set PYTOKENCALC_HF_TIMEOUT "
+                    f"to wait longer, or pre-download the tokenizer."
+                ) from e
             except Exception as e:
                 raise RuntimeError(
                     f"Failed to load tokenizer for {model_id}: {e}. "
                     f"Make sure the model ID is valid on HuggingFace Hub."
-                )
+                ) from e
 
         return self.tokenizers[model_id]
 
@@ -119,7 +135,6 @@ class HuggingFaceTokenCounter(TokenCounter):
     def validate_model(self, model: str) -> bool:
         """Check if model can be loaded"""
         try:
-            model_id = self._resolve_model_id(model)
             # Try to load (cached if already loaded)
             self._get_tokenizer(model)
             return True
@@ -148,7 +163,7 @@ class HuggingFaceTokenCounter(TokenCounter):
             try:
                 result = self.count(text, model)
                 results.append(result)
-            except Exception as e:
+            except Exception:
                 # Return error result
                 results.append(
                     TokenCountResult(

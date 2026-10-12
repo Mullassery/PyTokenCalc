@@ -5,8 +5,8 @@ Each provider (OpenAI, Llama, Anthropic, etc.) has its own implementation.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Any, TYPE_CHECKING
 from datetime import datetime
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 if TYPE_CHECKING:
     from .streaming import StreamingTokenCounter
@@ -103,13 +103,11 @@ class TokenCounter(ABC):
     @abstractmethod
     def provider_name(self) -> str:
         """Provider name (e.g., 'openai', 'anthropic', 'huggingface')"""
-        pass
 
     @property
     @abstractmethod
     def supported_models(self) -> List[str]:
         """List of supported models (patterns: 'gpt-4*', 'claude-*', 'llama-*')"""
-        pass
 
     @abstractmethod
     def count(self, text: str, model: str) -> TokenCountResult:
@@ -123,7 +121,6 @@ class TokenCounter(ABC):
         Returns:
             TokenCountResult with input token count
         """
-        pass
 
     def count_vision(
         self,
@@ -168,7 +165,6 @@ class TokenCounter(ABC):
     @abstractmethod
     def validate_model(self, model: str) -> bool:
         """Check if this counter supports the model"""
-        pass
 
     def get_tokenizer_info(self) -> Dict[str, Any]:
         """Return info about this tokenizer (version, vocabulary size, etc.)"""

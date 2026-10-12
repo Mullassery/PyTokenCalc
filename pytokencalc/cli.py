@@ -4,7 +4,7 @@ import json
 import sys
 from typing import Optional
 
-from .tokenizers import TokenCounterRegistry, TokenCounterCache
+from .tokenizers import TokenCounterCache, TokenCounterRegistry
 
 
 class CLIInterface:

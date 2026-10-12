@@ -1,113 +1,64 @@
-"""MCP Connector for PyTokenCalc - Token Counting & Cost Estimation"""
+"""MCP-facing facade for PyTokenCalc.
 
-import json
-import logging
-import subprocess
-import tempfile
-from abc import ABC, abstractmethod
+Historically this module tried to launch an external ``dab`` binary (via an
+optional ``statguardian`` package) to serve the MCP tools over HTTP. Neither
+is a dependency of this project and the path was never verified to work, so it
+has been removed.
+
+What remains is honest and real: :class:`TokenCalculator` exposes the token
+counting/cost-estimation tool surface (:mod:`pytokencalc._mcp_tools`) backed by
+the library's real :class:`~pytokencalc.tokenizers.TokenCounterRegistry` and
+the static :mod:`pytokencalc.pricing` table. There is no bundled MCP server or
+transport in this package, so :meth:`TokenCalculator.start_mcp_connector`
+raises ``NotImplementedError`` rather than reporting a fake endpoint.
+"""
+
 from typing import Any, Dict, Optional
 
-logger = logging.getLogger(__name__)
-
-try:
-    from statguardian._mcp_connector import BaseMCPConnector
-except ImportError:
-    class BaseMCPConnector(ABC):
-        def __init__(self, project_name: str, port: int = 8765):
-            self.project_name = project_name
-            self.port = port
-            self.dab_process: Optional[subprocess.Popen] = None
-            self._ready = False
-
-        @abstractmethod
-        def get_mcp_tools(self) -> Dict[str, Any]:
-            pass
-
-        @abstractmethod
-        def get_tool_handlers(self) -> Any:
-            pass
-
-        def start_mcp_connector(self) -> str:
-            logger.info(f"Starting {self.project_name} MCP...")
-            try:
-                tools = self.get_mcp_tools()
-                self.handler = self.get_tool_handlers()
-                config = self._generate_dab_config(tools)
-                config_path = self._write_temp_config(config)
-                self._start_dab_subprocess(config_path)
-                self._ready = True
-                return f"http://localhost:{self.port}/mcp"
-            except Exception as e:
-                logger.error(f"Failed: {e}")
-                raise
-
-        def stop_mcp_connector(self):
-            if self.dab_process:
-                try:
-                    self.dab_process.terminate()
-                    self.dab_process.wait(timeout=5)
-                except (subprocess.TimeoutExpired, OSError):
-                    pass
-                self._ready = False
-
-        def _generate_dab_config(self, tools: Dict[str, Any]) -> Dict:
-            # SECURITY: localhost-only binding, no wildcard CORS, and no
-            # wildcard RBAC by default. Widening any of these (binding to
-            # 0.0.0.0, opening CORS to "*", or granting the "*" role/action)
-            # is an explicit choice for a deployment that has its own
-            # network/auth controls -- it should not be the library default.
-            return {
-                "runtime": {"host": "127.0.0.1", "port": self.port, "cors": {"origins": []}},
-                "entities": {
-                    k: {"source": k, "permissions": [{"actions": ["read"], "roles": ["authenticated"]}]}
-                    for k in tools.keys()
-                },
-                "rest": {"enabled": True, "path": "/api"},
-                "graphql": {"enabled": True, "path": "/graphql"},
-                "mcp": {"enabled": True, "path": "/mcp"},
-            }
-
-        def _write_temp_config(self, config: Dict) -> str:
-            with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-                json.dump(config, f)
-                return f.name
-
-        def _start_dab_subprocess(self, config_path: str):
-            self.dab_process = subprocess.Popen(
-                ["dab", "start", "--config", config_path],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-
-        def is_ready(self) -> bool:
-            return self._ready
+from .tokenizers import get_global_registry
 
 
 class TokenCalculator:
-    """Multi-provider token counting and cost estimation"""
+    """Facade over the MCP tool surface, backed by the real token registry.
 
-    def __init__(self):
-        self.mcp_connector: Optional[Any] = None
+    Example::
 
-    def start_mcp_connector(self, port: int = 8778) -> str:
-        from pytokencalc._mcp_tools import PyTokenCalcMCPHandler, PyTokenCalcMCPTools
-        self.mcp_connector = _MCPTokenConnector(calc=self, port=port)
-        return self.mcp_connector.start_mcp_connector()
+        from pytokencalc import TokenCalculator
 
-    def stop_mcp_connector(self):
-        if self.mcp_connector:
-            self.mcp_connector.stop_mcp_connector()
+        calc = TokenCalculator()
+        handler = calc.get_handler()
+        tools = calc.get_tools()
+    """
 
+    def __init__(self, registry: Optional[Any] = None):
+        self.registry = registry if registry is not None else get_global_registry()
 
-class _MCPTokenConnector(BaseMCPConnector):
-    def __init__(self, calc: TokenCalculator, port: int = 8778):
-        super().__init__("PyTokenCalc", port=port)
-        self.calc = calc
-
-    def get_mcp_tools(self) -> Dict[str, Any]:
+    def get_tools(self) -> Dict[str, Any]:
+        """Return the MCP tool schemas (``pytokencalc._mcp_tools``)."""
         from pytokencalc._mcp_tools import PyTokenCalcMCPTools
+
         return PyTokenCalcMCPTools.get_tools()
 
-    def get_tool_handlers(self) -> Any:
+    def get_handler(self, calc: Optional[Any] = None) -> Any:
+        """Return a handler bound to this calculator's registry."""
         from pytokencalc._mcp_tools import PyTokenCalcMCPHandler
-        return PyTokenCalcMCPHandler(self.calc)
+
+        return PyTokenCalcMCPHandler(calc=calc or self, registry=self.registry)
+
+    def start_mcp_connector(self, port: int = 8778) -> str:
+        """Not implemented: this package ships no MCP server/transport.
+
+        The previous implementation shelled out to a ``dab`` binary that is
+        not a dependency of PyTokenCalc. Use :meth:`get_handler` and
+        :meth:`get_tools` directly (e.g. from your own MCP host), or run the
+        REST server in :mod:`pytokencalc.server`.
+        """
+        raise NotImplementedError(
+            "PyTokenCalc does not ship an MCP server/transport. The former "
+            "implementation launched an external 'dab' binary that is not a "
+            "dependency. Use TokenCalculator.get_tools()/get_handler() from "
+            "your own MCP host, or pytokencalc.server for the REST API."
+        )
+
+    def stop_mcp_connector(self) -> None:
+        """No-op: there is no connector process to stop."""

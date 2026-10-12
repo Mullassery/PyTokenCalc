@@ -10,6 +10,13 @@ description of reality, and were deleted rather than "archived" because
 nothing in them is true of this project.
 
 Last verified: 2026-09 (Sonnet 5, doing an OSS-standardization pass).
+2026-10-11: MCP subsystem rebuilt for real (section 4) — fake hardcoded
+handlers and the external `dab` shell-out removed; handlers now use the
+real tokenizer registry + `pricing` table; `tests/test_mcp_tools.py`
+added (23 tests). Full suite in this pass: `176 passed, 29 skipped`
+(opensource-transformer tests skip when `transformers` is absent; the
+`test_dynamic_model_discovery` test now skips instead of erroring with
+`AttributeError` when the opensource counter isn't registered).
 Repo: `/Users/georgimullassery/PyTokenCalc`, package version 1.2.0.
 
 ## 1. What's shipped and verified working
@@ -100,15 +107,22 @@ do with OpenAI.**
 
 ## 3. Test coverage gaps (concrete, by file)
 
-- **No test file at all** for: `pytokencalc/api.py` (the `count_tokens`/
+- ~~**No test file at all** for: `pytokencalc/api.py` (the `count_tokens`/
   `estimate_cost` top-level functions — the exact functions in the
   README's headline example), `pytokencalc/pricing.py` /
   `PRICING_TABLE` (the cost-estimation feature this library leads with),
   `pytokencalc/server.py` (REST server), `pytokencalc/cli.py` (the full
   `pytokencalc` CLI — only `quick_cli`/`pycount` has tests),
-  `pytokencalc/okf_token_baselines.py`, `pytokencalc/_mcp_connector.py`,
-  `pytokencalc/_mcp_tools.py`.
-- `tests/test_accuracy_verification.py:1045` calls
+  `pytokencalc/okf_token_baselines.py`,
+  `pytokencalc/_mcp_connector.py`, `pytokencalc/_mcp_tools.py`.~~
+  **CLOSED (2026-10-11).** Every previously-untested module now has a
+  dedicated test file: `tests/test_pricing_and_api.py` (`api.py` +
+  `pricing.py`, 20 tests), `tests/test_server.py` (REST server, 12 tests;
+  HTTP tests Flask-gated), `tests/test_cli.py` (full `pytokencalc` CLI,
+  15 tests), `tests/test_okf_token_baselines.py` (8 tests), and
+  `tests/test_mcp_tools.py` (`_mcp_connector.py` + `_mcp_tools.py`, 23
+  tests).
+- ~~`tests/test_accuracy_verification.py:1045` calls
   `AutoTokenizer.from_pretrained("tiiuae/falcon-7b")` with no timeout and
   no offline guard — a real network download of a 7B-parameter model's
   tokenizer files on every uncached run. This test is wrapped in a broad
@@ -119,7 +133,15 @@ do with OpenAI.**
   `pytokencalc/tokenizers/huggingface_counter.py:71` and
   `pytokencalc/tokenizers/opensource_counter.py:102` — any call to
   `count_tokens(text, model=<huggingface-or-fallback-model>)` for a model
-  ID not already cached locally has no bound on how long it can block.
+  ID not already cached locally has no bound on how long it can block.~~
+  **FIXED (2026-10-11).** Added `pytokencalc/tokenizers/_timeout.py`
+  (`call_with_timeout`, thread-based) and wired it into both
+  `huggingface_counter.py` and `opensource_counter.py`, which now bound
+  every `AutoTokenizer.from_pretrained()` call (default 30s, overridable
+  via the `load_timeout` constructor arg or the `PYTOKENCALC_HF_TIMEOUT`
+  env var) and raise a `RuntimeError` on timeout instead of blocking for
+  the OS TCP connect timeout. The falcon test uses the same bounded
+  helper. Covered by `tests/test_timeout.py`.
 - `pytokencalc/statguardian_integration.py` and
   `pytokencalc/okf_token_baselines.py` implement real logic but are not
   called anywhere inside `count_tokens()`/`estimate_cost()` — they are
@@ -129,14 +151,18 @@ do with OpenAI.**
 ## 4. Dead / experimental code that should not be presented as shipped
 
 - **MCP subsystem** (`pytokencalc/_mcp_connector.py`, `_mcp_tools.py`,
-  exported at the top level as `pytokencalc.TokenCalculator`) — zero test
-  coverage, zero mention in README.md or docs/API.md, and its real
-  connector path shells out to an undocumented external `dab` binary that
-  is not a declared dependency of this package. `examples/mcp_pytokencalc.py`
-  exists and imports/calls it, but nobody has verified it works end-to-end
-  outside whatever internal environment originally had `dab` installed.
-  Recommendation: either write tests + docs for it, or remove it from the
-  public `__all__` and stop shipping the example.
+  exported at the top level as `pytokencalc.TokenCalculator`) —
+  **RESOLVED (2026-10-11).** The fake handlers (hardcoded `len(text)//4`
+  counts, fixed `0.01`/`0.03` per-1k rates, fabricated budgets/usage) and
+  the shell-out to an undocumented external `dab` binary (with a
+  `statguardian` fallback) were removed. Handlers now call the real
+  `TokenCounterRegistry` for counts and the `pricing` table for costs;
+  budgets/usage are held in a real in-memory store. There is deliberately
+  no MCP transport in this package, so
+  `TokenCalculator.start_mcp_connector()` raises `NotImplementedError`
+  instead of returning a fake endpoint. Covered by
+  `tests/test_mcp_tools.py` (23 tests) and the rewritten
+  `examples/mcp_pytokencalc.py`, which drives the real handler directly.
 - **`docs/conf.py` + `docs/index.rst`** (removed in this pass) — a Sphinx
   scaffold whose `toctree` pointed at files that never existed
   (`user_guide/getting_started`, `api/core`, `providers/anthropic`, etc.),
@@ -176,23 +202,32 @@ do with OpenAI.**
   current-generation model families that launched since 2025-06 (GPT-4.1/
   GPT-5-era, Claude 4-era, etc.) -- adding those is real data-entry work,
   left for a follow-up.
-- **Lint is not enforced anywhere.** `.github/workflows/ci.yml` only runs
-  `pytest`; it never runs `ruff`, `black --check`, or `mypy`, despite all
-  three being configured in `.pre-commit-config.yaml` and `pyproject.toml`.
-  Running `ruff check pytokencalc/` in this pass surfaced **291 findings**
-  (44 auto-fixable) against ruff's current default rule set — this
-  project's `[tool.ruff]` config only sets `line-length`/`target-version`
-  and has never curated a rule selection, so it's accumulated ruff's
-  growing default rules unchecked. Not fixed here (291 findings is a real
-  cleanup task, not a typo fix) — flagged for a dedicated lint-debt
-  session, including deciding on an intentional `select =` in
-  `[tool.ruff]` instead of the implicit default. **Update 2026-09-22**:
-  now 299 findings after the registry crash fix (section 2) — the +8 are
-  `BLE001` ("do not catch blind exception") on the 8 new
-  `except Exception` clauses in `registry.py`, which is the intentional,
-  correct tradeoff for provider-registration isolation. Still not fixed
-  as part of this quick-fix pass; still needs the dedicated lint-debt
-  session.
+- ~~**Lint is not enforced anywhere.**~~ ... **FIXED (2026-10-11).**
+  `.github/workflows/ci.yml` now has a `lint` job running `ruff check .`,
+  and `pyproject.toml` gained an explicit curated
+  `[tool.ruff.lint] select = ["E","F","W","I","B","C4","PIE","SIM"]`
+  (with `E501` ignored — line length is owned by black). This replaced the
+  implicit ruff default, which grows between releases and can silently add
+  new failing rules on upgrade. All prior findings were resolved (53 fixed
+  automatically, the rest by hand): `B904` bare raises now use `raise ...
+  from`, unused imports/variables removed, `set()`-comprehension and
+  `SIM`/`PIE` simplifications applied. `ruff check .` is clean and gated in
+  CI. (Historical note kept below.)
+  Running `ruff check pytokencalc/` in the 2026-09 pass surfaced **291
+  findings** (44 auto-fixable) against ruff's then-current default rule set
+  — this project's `[tool.ruff]` config only set
+  `line-length`/`target-version` and had never curated a rule selection, so
+  it had accumulated ruff's growing default rules unchecked. **Update
+  2026-09-22**: 299 findings after the registry crash fix (section 2) — the
+  +8 were `BLE001` ("do not catch blind exception") on the 8 new
+  `except Exception` clauses in `registry.py`, an intentional tradeoff for
+  provider-registration isolation. No longer relevant now that the rule
+  selection is explicit.
+  Deliberately **not** enabled: `UP` (typing modernization — `Dict`→`dict`
+  etc. needs `from __future__ import annotations` repo-wide and interacts
+  with runtime annotation introspection on `NamedTuple`/dataclasses; a
+  separate mechanical pass), `DTZ` (timezone-aware datetimes — the codebase
+  uses `datetime.utcnow` throughout), `BLE`, and `RUF`.
 - **`.pre-commit-config.yaml`'s bandit hook referenced a `.bandit` config
   file that did not exist** (`args: ["-c", ".bandit"]`), which meant the
   bandit hook would fail outright for anyone running `pre-commit run
@@ -246,16 +281,24 @@ do with OpenAI.**
 
 Priority order if you have one dedicated session: ~~(1) the registry
 exception-handling bug in section 2~~ **done 2026-09-22, see section 2**;
-(2) add tests for `api.py`/`pricing.py` since that's the feature the
-README leads with and it currently has zero coverage; (3) decide whether
-the MCP subsystem gets real tests + docs or gets removed; (4) curate a
+~~(2) add tests for `api.py`/`pricing.py` since that's the feature the
+README leads with and it currently has zero coverage~~ **done 2026-10-11 —
+`tests/test_pricing_and_api.py` (+ `test_server.py`, `test_cli.py`,
+`test_okf_token_baselines.py`), see section 3**; ~~(3) decide whether
+the MCP subsystem gets real tests + docs or gets removed~~ **done
+2026-10-11 — rebuilt for real + `tests/test_mcp_tools.py`, see section 4**;
+~~(4) curate a
 real `ruff` rule selection and turn lint on in CI once the (now 299,
-see section 5) findings are triaged; (5) expand `pricing.py`'s
+see section 5) findings are triaged~~ **done 2026-10-11 — explicit
+`[tool.ruff.lint] select`, `ruff check .` clean, `lint` job in CI, see
+section 5**; (5) expand `pricing.py`'s
 `PRICING_TABLE` to cover current-generation model families (see section
 5 — existing rows were spot-checked and are accurate, but coverage is
-incomplete); (6) add a bounded timeout around
+incomplete; still open — real data-entry + verification work); ~~(6) add a
+bounded timeout around
 `AutoTokenizer.from_pretrained()` in `huggingface_counter.py:71` /
 `opensource_counter.py:102` — assessed in the 2026-09-22 pass as real
 feature work (needs a thread/signal-based timeout wrapper since
 `from_pretrained` has no native timeout param), not a quick fix, so still
-open.
+open~~ **done 2026-10-11 — `tokenizers/_timeout.py` + `tests/test_timeout.py`,
+see section 3**.

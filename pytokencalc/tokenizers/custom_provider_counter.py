@@ -15,9 +15,9 @@ Supports:
 Users can register custom providers without modifying PyTokenCalc code.
 """
 
-from typing import List, Dict, Any, Optional, Callable
-import time
 import logging
+import time
+from typing import Any, Callable, Dict, List, Optional
 
 from .base import TokenCounter, TokenCountResult
 
@@ -229,7 +229,7 @@ class CustomProviderCounter(TokenCounter):
         except Exception as e:
             raise RuntimeError(
                 f"Failed to count tokens with {self._provider_name} for {model}: {e}"
-            )
+            ) from e
 
         latency_ms = (time.time() - start_time) * 1000
 

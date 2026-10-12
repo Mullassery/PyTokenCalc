@@ -4,11 +4,12 @@ Supports any HuggingFace model ID + models from Azure, AWS, GCP.
 New models appear daily across these platforms - no code changes needed.
 """
 
-from typing import List, Dict, Any, Optional
 import time
+from typing import Any, Dict, List
 
-from .base import TokenCounter, TokenCountResult
 from ._hf_validation import validate_model_id_for_from_pretrained
+from ._timeout import call_with_timeout, resolve_default_timeout
+from .base import TokenCounter, TokenCountResult
 
 try:
     from transformers import AutoTokenizer
@@ -53,12 +54,16 @@ class OpenSourceTokenCounter(TokenCounter):
         "mixtral-8x7b": "mistralai/Mixtral-8x7B",
     }
 
-    def __init__(self):
+    def __init__(self, load_timeout: float = None):
         if not HF_AVAILABLE:
             raise ImportError(
                 "transformers is required for open-source model token counting. "
                 "Install: pip install transformers torch"
             )
+        # Ceiling (seconds) for a single tokenizer download/load; see
+        # _timeout.py and huggingface_counter.py. Overridable via
+        # PYTOKENCALC_HF_TIMEOUT.
+        self.load_timeout = load_timeout or resolve_default_timeout()
         self.tokenizers = {}
 
     def _resolve_model_id(self, model: str) -> str:
@@ -99,13 +104,25 @@ class OpenSourceTokenCounter(TokenCounter):
 
         if model_id not in self.tokenizers:
             try:
-                self.tokenizers[model_id] = AutoTokenizer.from_pretrained(model_id)
+                self.tokenizers[model_id] = call_with_timeout(
+                    AutoTokenizer.from_pretrained,
+                    self.load_timeout,
+                    model_id,
+                )
+            except TimeoutError as e:
+                raise RuntimeError(
+                    f"Timed out loading tokenizer for '{model}' (resolved to "
+                    f"'{model_id}') after {self.load_timeout:g}s. The model may "
+                    f"be uncached and HuggingFace Hub unreachable; set "
+                    f"PYTOKENCALC_HF_TIMEOUT to wait longer, or pre-download "
+                    f"the tokenizer."
+                ) from e
             except Exception as e:
                 raise RuntimeError(
                     f"Failed to load tokenizer for '{model}' (resolved to '{model_id}'). "
                     f"Ensure model exists on HuggingFace Hub (org/model-name format). "
                     f"Details: {e}"
-                )
+                ) from e
 
         return self.tokenizers[model_id]
 
@@ -140,7 +157,7 @@ class OpenSourceTokenCounter(TokenCounter):
             raise RuntimeError(
                 f"Failed to count tokens for model '{model}': {e}. "
                 f"Try using format: 'org/model-name' for HuggingFace models."
-            )
+            ) from e
 
         latency_ms = (time.time() - start_time) * 1000
 
@@ -163,14 +180,11 @@ class OpenSourceTokenCounter(TokenCounter):
         """
         model_id = self._resolve_model_id(model)
 
-        # Permissive validation: only reject obviously invalid formats
-        # Anything that looks like a model ID is accepted
-        if not model_id or len(model_id) < 3:
-            return False
-
-        # Allow: HuggingFace IDs (org/model), cloud URIs (aws://, azure://, gcp://)
-        # Actual validation happens when loading tokenizer
-        return True
+        # Permissive validation: only reject obviously invalid formats.
+        # Anything that looks like a model ID is accepted (HuggingFace
+        # org/model, cloud URIs like aws://, azure://, gcp://); actual
+        # validation happens when the tokenizer is loaded.
+        return bool(model_id) and len(model_id) >= 3
 
     def get_tokenizer_info(self) -> Dict[str, Any]:
         """Return tokenizer info"""

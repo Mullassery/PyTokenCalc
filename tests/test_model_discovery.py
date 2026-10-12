@@ -2,7 +2,6 @@
 Tests for model discovery and lookup system.
 """
 
-import pytest
 from pytokencalc.model_discovery import ModelDiscovery
 
 

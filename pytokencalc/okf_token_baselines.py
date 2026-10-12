@@ -4,10 +4,10 @@ Provider benchmarks, model efficiency comparisons, and cost predictors
 for token counting across LLM providers.
 """
 
-from pathlib import Path
-from typing import Dict, List, Optional
-from dataclasses import dataclass
 import json
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Dict, Optional
 
 
 @dataclass
@@ -90,6 +90,11 @@ class OKFTokenBaselines:
         baseline = self.get_baseline(provider, model, task_type)
         if not baseline:
             return None
+
+        # Guard against a zero/negative historical input average, which would
+        # make the output/input ratio undefined (ZeroDivisionError).
+        if baseline.avg_input_tokens <= 0:
+            return input_tokens
 
         # Predict output based on input ratio
         input_output_ratio = baseline.avg_output_tokens / baseline.avg_input_tokens

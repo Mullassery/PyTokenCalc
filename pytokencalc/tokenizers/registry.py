@@ -3,19 +3,19 @@ Token counter registry with intelligent routing.
 Routes to correct tokenizer based on model/provider.
 """
 
-from typing import Optional, Dict, List, Any
 import logging
+from typing import Any, Dict, List, Optional
 
-from .base import TokenCounter, TokenCountResult
-from .openai_counter import OpenAITokenCounter
-from .huggingface_counter import HuggingFaceTokenCounter
 from .anthropic_counter import AnthropicTokenCounter
-from .google_counter import GoogleTokenCounter
-from .cohere_counter import CohereTokenCounter
 from .azure_openai_counter import AzureOpenAITokenCounter
-from .opensource_counter import OpenSourceTokenCounter
-from .ollama_counter import OllamaTokenCounter
+from .base import TokenCounter, TokenCountResult
+from .cohere_counter import CohereTokenCounter
 from .custom_provider_counter import get_custom_provider, list_custom_providers
+from .google_counter import GoogleTokenCounter
+from .huggingface_counter import HuggingFaceTokenCounter
+from .ollama_counter import OllamaTokenCounter
+from .openai_counter import OpenAITokenCounter
+from .opensource_counter import OpenSourceTokenCounter
 
 logger = logging.getLogger(__name__)
 
@@ -195,7 +195,7 @@ class TokenCounterRegistry:
             result = counter.count(text, model)
             return result
         except Exception as e:
-            raise RuntimeError(f"Failed to count tokens for {model}: {e}")
+            raise RuntimeError(f"Failed to count tokens for {model}: {e}") from e
 
     def count_vision(
         self,
@@ -247,7 +247,7 @@ class TokenCounterRegistry:
                 num_images=num_images,
             )
         except Exception as e:
-            raise RuntimeError(f"Failed to count vision tokens for {model}: {e}")
+            raise RuntimeError(f"Failed to count vision tokens for {model}: {e}") from e
 
     def count_batch(
         self,
@@ -322,16 +322,16 @@ class TokenCounterRegistry:
                 "warnings": [],
             }
 
-        providers = set(r.provider for r in results)
-        models = set(r.model for r in results)
-        platforms = set((r.provider, r.platform or r.provider) for r in results)
+        providers = {r.provider for r in results}
+        models = {r.model for r in results}
+        platforms = {(r.provider, r.platform or r.provider) for r in results}
 
         warnings = []
 
         # Warn if same model appears on different platforms
         for model in models:
             model_results = [r for r in results if r.model == model]
-            model_providers = set(r.provider for r in model_results)
+            model_providers = {r.provider for r in model_results}
 
             if len(model_providers) > 1:
                 warnings.append(
@@ -341,8 +341,8 @@ class TokenCounterRegistry:
 
         return {
             "consistent": len(warnings) == 0,
-            "providers": sorted(list(providers)),
-            "platforms": sorted(list(str(p) for p in platforms)),
+            "providers": sorted(providers),
+            "platforms": sorted(str(p) for p in platforms),
             "warnings": warnings,
         }
 

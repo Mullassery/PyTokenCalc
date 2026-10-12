@@ -4,6 +4,7 @@ Tests: Anthropic, Google, Cohere, Azure, Open-source models.
 """
 
 import pytest
+
 from pytokencalc.tokenizers import (
     TokenCounterRegistry,
     TokenCountResult,

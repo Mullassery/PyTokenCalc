@@ -3,8 +3,8 @@ Anthropic Claude token counter.
 Provides token counting for Claude 3 models (Opus, Sonnet, Haiku, 3.5-Sonnet).
 """
 
-from typing import List, Dict, Any
 import time
+from typing import Any, Dict, List
 
 from .base import TokenCounter, TokenCountResult
 
@@ -72,7 +72,7 @@ class AnthropicTokenCounter(TokenCounter):
             )
             token_count = response.input_tokens
         except Exception as e:
-            raise RuntimeError(f"Failed to count tokens for {model}: {e}")
+            raise RuntimeError(f"Failed to count tokens for {model}: {e}") from e
 
         latency_ms = (time.time() - start_time) * 1000
 

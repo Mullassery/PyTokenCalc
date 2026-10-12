@@ -4,8 +4,8 @@ Provides token counting for Azure OpenAI models (GPT-4, GPT-3.5, etc).
 Uses same tokenization as OpenAI via tiktoken.
 """
 
-from typing import List, Dict, Any
 import time
+from typing import Any, Dict, List
 
 from .base import TokenCounter, TokenCountResult
 
@@ -41,7 +41,7 @@ class AzureOpenAITokenCounter(TokenCounter):
         try:
             self.encodings["cl100k_base"] = tiktoken.get_encoding("cl100k_base")
         except Exception as e:
-            raise RuntimeError(f"Failed to load tiktoken encodings: {e}")
+            raise RuntimeError(f"Failed to load tiktoken encodings: {e}") from e
 
     def _get_encoding(self, model: str):
         """Get tiktoken encoding for model"""
