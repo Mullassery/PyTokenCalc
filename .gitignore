@@ -52,3 +52,5 @@ htmlcov/
 token_validations/
 token_baselines/
 coverage.xml
+
+graphify-out/
