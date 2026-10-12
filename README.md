@@ -1,5 +1,7 @@
 # PyTokenCalc
 
+[![Grapify](https://img.shields.io/badge/Grapify-Code%20Scan-purple)](https://grapify.ai)
+
 **Know your LLM costs before you hit send.**
 
 Stop guessing tokens. PyTokenCalc counts tokens across OpenAI, Anthropic,
