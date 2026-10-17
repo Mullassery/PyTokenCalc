@@ -81,8 +81,17 @@ class AzureOpenAITokenCounter(TokenCounter):
         )
 
     def validate_model(self, model: str) -> bool:
-        """Check if model is supported"""
-        return model.lower() in self.MODEL_TO_ENCODING
+        """Check if model is supported.
+
+        Azure deployment names often carry provider/version suffixes that
+        aren't in ``MODEL_TO_ENCODING`` (e.g. ``gpt-4-azure``). Accept any
+        ``gpt-4*``/``gpt-35*`` name; ``_get_encoding`` already falls back to
+        ``cl100k_base`` for unrecognized names, matching OpenAI tokenization.
+        """
+        model_lower = model.lower()
+        if model_lower in self.MODEL_TO_ENCODING:
+            return True
+        return any(model_lower.startswith(prefix) for prefix in ("gpt-4", "gpt-35"))
 
     def get_tokenizer_info(self) -> Dict[str, Any]:
         """Return tokenizer info"""

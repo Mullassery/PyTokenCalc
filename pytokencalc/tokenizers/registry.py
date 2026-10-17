@@ -118,6 +118,12 @@ class TokenCounterRegistry:
         """Auto-detect which counter to use based on model ID"""
         model_lower = model.lower()
 
+        # Azure OpenAI models (must be checked before the generic OpenAI
+        # patterns below, otherwise an Azure gpt-4* deployment matches
+        # "gpt-4" and never reaches the azure branch).
+        if "gpt-35" in model_lower or ("gpt-4" in model_lower and "azure" in model_lower):
+            return self.get_counter("azure")
+
         # OpenAI models
         if any(x in model_lower for x in ["gpt-4", "gpt-3.5", "text-davinci", "text-embedding"]):
             return self.get_counter("openai")
@@ -133,10 +139,6 @@ class TokenCounterRegistry:
         # Cohere models
         if "command" in model_lower:
             return self.get_counter("cohere")
-
-        # Azure OpenAI models
-        if "gpt-35" in model_lower or ("gpt-4" in model_lower and "azure" in model_lower):
-            return self.get_counter("azure")
 
         # Ollama models (local inference)
         if "ollama" in model_lower or any(x in model_lower for x in
