@@ -2,6 +2,11 @@
 
 All notable changes to PyTokenCalc are documented in this file.
 
+## [1.3.1] - 2026-10-17
+
+### Fixed
+- Audit remediation: security hardening, correctness fixes, and lint/CI gates.
+
 ## [1.3.0] - 2026-10-11
 
 ### Added
