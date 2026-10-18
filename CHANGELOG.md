@@ -2,6 +2,16 @@
 
 All notable changes to PyTokenCalc are documented in this file.
 
+## [1.3.2] - 2026-10-18
+
+### Added
+- Property-based boundary tests for the local tokenizer
+  (`tests/test_tokenizer_boundaries_property.py`, Hypothesis): assert
+  `count_tokens` matches the underlying `tiktoken` encoding exactly for
+  `gpt-4o`/`gpt-4` over generated empty/whitespace/astral/emoji/run inputs,
+  plus count bounds, determinism, and token-seam invariants (RECHECK-016).
+  `hypothesis` added to the `dev` extra.
+
 ## [1.3.1] - 2026-10-17
 
 ### Fixed
