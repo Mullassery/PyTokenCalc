@@ -48,4 +48,13 @@ Invest; freshness is existential for a cost tool.
 
 ## Implementation status
 
-No code changes in this pass.
+Shipped pricing freshness + local overrides in this pass:
+
+- `pricing_status()` (age/stale/model count/source) and
+  `load_pricing_override(path)` for a local JSON table.
+- CLI `pytokencalc pricing [--file PATH]`.
+- 23 pricing/API tests pass; `tests/test_pricing_and_api.py` covers status,
+  override cost calculation, and invalid files.
+
+Still open: a fully automated upstream price feed (deliberately out of scope),
+and provider-specific tokenizer coverage.

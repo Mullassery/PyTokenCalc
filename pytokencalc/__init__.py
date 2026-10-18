@@ -41,7 +41,13 @@ __author__ = "Georgi Mammen Mullassery"
 
 # Top-level ergonomic API (v1.1.0+): count_tokens() -> int, estimate_cost() -> USD
 from .api import count_tokens, estimate_cost
-from .pricing import PRICING_LAST_UPDATED, PRICING_TABLE, get_model_pricing
+from .pricing import (
+    PRICING_LAST_UPDATED,
+    PRICING_TABLE,
+    get_model_pricing,
+    load_pricing_override,
+    pricing_status,
+)
 
 # Token counting (v0.7+: Multi-provider token counter)
 try:
@@ -104,6 +110,8 @@ __all__ = [
     "get_model_pricing",
     "PRICING_TABLE",
     "PRICING_LAST_UPDATED",
+    "load_pricing_override",
+    "pricing_status",
     # Token counting interface
     "TokenCounter",
     "TokenCountResult",

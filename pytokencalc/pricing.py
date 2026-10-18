@@ -19,7 +19,10 @@ touches real money:
 To update: edit PRICING_TABLE below and bump PRICING_LAST_UPDATED.
 """
 
-from typing import Dict, NamedTuple, Optional
+import json
+from datetime import date, datetime
+from pathlib import Path
+from typing import Any, Dict, NamedTuple, Optional
 
 # Bump this whenever PRICING_TABLE is edited.
 #
@@ -34,6 +37,8 @@ from typing import Dict, NamedTuple, Optional
 # scope for this quick-fix pass. Treat "last updated" as "existing rows
 # verified accurate," not "table is complete."
 PRICING_LAST_UPDATED = "2026-09"
+PRICING_SOURCE = "builtin"
+PRICING_MAX_AGE_DAYS = 90
 
 
 class ModelPricing(NamedTuple):
@@ -133,3 +138,74 @@ def estimate_cost(model: str, input_tokens: int, output_tokens: int = 0) -> floa
         + output_tokens * pricing.output_per_million
     ) / 1_000_000
     return cost
+
+
+def pricing_status(now: Optional[date] = None) -> Dict[str, Any]:
+    """Report the pricing snapshot's age and whether it should be refreshed.
+
+    ``PRICING_LAST_UPDATED`` is a ``YYYY-MM`` marker, so age is measured from
+    the first day of that month. This is a warning signal, not a hard failure:
+    old prices are still usable for estimates, but should be verified.
+    """
+    today = now or date.today()
+    try:
+        updated = datetime.strptime(PRICING_LAST_UPDATED, "%Y-%m").date()
+    except ValueError:
+        updated = today
+    age_days = (today - updated).days
+    return {
+        "last_updated": PRICING_LAST_UPDATED,
+        "source": PRICING_SOURCE,
+        "models": len(PRICING_TABLE),
+        "age_days": age_days,
+        "max_age_days": PRICING_MAX_AGE_DAYS,
+        "stale": age_days > PRICING_MAX_AGE_DAYS,
+    }
+
+
+def load_pricing_override(path: str) -> Dict[str, Any]:
+    """Replace the in-process pricing table from a JSON file.
+
+    Expected shape::
+
+        {"last_updated": "2026-10-19",
+         "models": {"gpt-5": {"input_per_million": 1.25,
+                               "output_per_million": 10.0}}}
+
+    The override is process-wide (the same table used by ``estimate_cost``)
+    and intentionally explicit: there is no network fetch. Returns the same
+    status dict as :func:`pricing_status`.
+    """
+    global PRICING_TABLE, PRICING_LAST_UPDATED, PRICING_SOURCE
+
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError("pricing file must be a JSON object")
+    last_updated = data.get("last_updated")
+    models = data.get("models")
+    if not isinstance(last_updated, str) or not last_updated:
+        raise ValueError("pricing file requires a non-empty 'last_updated'")
+    if not isinstance(models, dict) or not models:
+        raise ValueError("pricing file requires a non-empty 'models' object")
+
+    parsed: Dict[str, ModelPricing] = {}
+    for model, raw in models.items():
+        if not isinstance(model, str) or not model:
+            raise ValueError("pricing model keys must be non-empty strings")
+        if not isinstance(raw, dict):
+            raise ValueError(f"pricing for {model!r} must be an object")
+        try:
+            input_price = float(raw["input_per_million"])
+            output_price = float(raw["output_per_million"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError(
+                f"pricing for {model!r} requires numeric input_per_million and output_per_million"
+            ) from exc
+        if input_price < 0 or output_price < 0:
+            raise ValueError(f"pricing for {model!r} must be non-negative")
+        parsed[model.lower()] = ModelPricing(input_price, output_price)
+
+    PRICING_TABLE = parsed
+    PRICING_LAST_UPDATED = last_updated
+    PRICING_SOURCE = path
+    return pricing_status()

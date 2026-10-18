@@ -23,6 +23,9 @@ from compiled code in PyTokenCalc itself. It installs and imports as `pytokencal
 - **Provider-accurate tokenization** — `tiktoken` for OpenAI and Azure-hosted OpenAI
   models, the HuggingFace `transformers` tokenizer, and live count-tokens endpoints for
   Anthropic/Google/Cohere.
+- **Pricing freshness** — `pricing_status()` reports the snapshot's age and
+  flags it stale after 90 days; `load_pricing_override(path)` loads a local
+  JSON pricing file for newer/private models. `pytokencalc pricing` exposes it.
 - **Real cost estimation** — `estimate_cost()` is backed by a per-model USD pricing table
   (input vs. output rates), not a guess; see
   [`pytokencalc/pricing.py`](pytokencalc/pricing.py) for sources and last-updated date.

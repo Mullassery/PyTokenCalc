@@ -2,6 +2,18 @@
 
 All notable changes to PyTokenCalc are documented in this file.
 
+## [1.4.0] - 2026-10-19
+
+### Added
+- `pricing_status()` reports the pricing snapshot's last-updated date, age,
+  model count, source, and whether it is older than 90 days.
+- `load_pricing_override(path)` replaces the in-process pricing table from a
+  local JSON file (`{last_updated, models}`), for newer models or private
+  pricing. No network fetch is performed.
+- CLI: `pytokencalc pricing [--file PATH]` prints the status as JSON.
+- Tests cover status, override behavior, cost calculation from the override,
+  and invalid files.
+
 ## [1.3.2] - 2026-10-18
 
 ### Added

@@ -151,3 +151,46 @@ class TestRealRegistryIntegration:
         assert count > 0
         # Must agree with the registry it delegates to.
         assert count == get_global_registry().count_tokens("gpt-4o", text).input_tokens
+
+
+class TestPricingStatusAndOverride:
+    def test_status_reports_age_and_staleness(self):
+        from datetime import date
+
+        from pytokencalc.pricing import pricing_status
+
+        status = pricing_status(now=date(2026, 10, 19))
+        assert status["last_updated"] == PRICING_LAST_UPDATED
+        assert status["models"] == len(PRICING_TABLE)
+        assert status["stale"] is False
+
+    def test_override_replaces_table_and_source(self, tmp_path):
+        from pytokencalc import pricing
+
+        original_table = dict(pricing.PRICING_TABLE)
+        original_updated = pricing.PRICING_LAST_UPDATED
+        original_source = pricing.PRICING_SOURCE
+        try:
+            path = tmp_path / "pricing.json"
+            path.write_text(
+                '{"last_updated": "2026-10-19",'
+                ' "models": {"gpt-5": {"input_per_million": 1.25,'
+                ' "output_per_million": 10.0}}}',
+                encoding="utf-8",
+            )
+            status = pricing.load_pricing_override(str(path))
+            assert status["source"] == str(path)
+            assert pricing.get_model_pricing("gpt-5") == ModelPricing(1.25, 10.0)
+            assert pricing.estimate_cost("gpt-5", 1_000_000, 1_000_000) == pytest.approx(11.25)
+        finally:
+            pricing.PRICING_TABLE = original_table
+            pricing.PRICING_LAST_UPDATED = original_updated
+            pricing.PRICING_SOURCE = original_source
+
+    def test_override_rejects_missing_models(self, tmp_path):
+        from pytokencalc import pricing
+
+        path = tmp_path / "bad.json"
+        path.write_text('{"last_updated": "2026-10-19"}', encoding="utf-8")
+        with pytest.raises(ValueError, match="models"):
+            pricing.load_pricing_override(str(path))

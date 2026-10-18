@@ -214,6 +214,18 @@ def main():
             result = cli.clear_cache()
             print(json.dumps(result))
 
+        elif command == "pricing":
+            from .pricing import load_pricing_override, pricing_status
+
+            status = pricing_status()
+            if "--file" in sys.argv:
+                index = sys.argv.index("--file")
+                if index + 1 >= len(sys.argv):
+                    print(json.dumps({"error": "--file requires a path"}))
+                    sys.exit(1)
+                status = load_pricing_override(sys.argv[index + 1])
+            print(json.dumps(status))
+
         elif command == "help":
             print_help()
 
@@ -254,6 +266,10 @@ COMMANDS:
 
         Example:
             pytokencalc count-vision "Describe this" gpt-4-vision 3
+
+    pricing [--file PATH]
+        Show pricing-snapshot age/staleness; optionally load a local JSON
+        override with {"last_updated": "YYYY-MM-DD", "models": {...}}
 
     providers
         List all available token counter providers
