@@ -51,10 +51,11 @@ from compiled code in PyTokenCalc itself. It installs and imports as `pytokencal
 
 ## What it is not
 
-- **No MCP transport ships.** `pytokencalc.TokenCalculator` now has real handlers (token
-  counts from the tokenizer registry, costs from the pricing table), but
-  `start_mcp_connector()` raises `NotImplementedError` because PyTokenCalc ships no MCP
-  transport. Budget/usage tools are in-memory and process-scoped.
+- **MCP transport is optional.** `pytokencalc.TokenCalculator` has real handlers (token
+  counts from the tokenizer registry, costs from the pricing table), and the FastMCP
+  transport ships only with `pip install "pytokencalc[mcp]"`; without that extra,
+  building a server raises an actionable install error. Budget/usage tools are in-memory
+  and process-scoped.
 - **No committed benchmark result.** The performance numbers are informal local
   observations, not a checked-in benchmark; there is no results file backing a specific
   claim. For OpenAI models PyTokenCalc *is* `tiktoken` under the hood, with a roughly
@@ -68,11 +69,36 @@ from compiled code in PyTokenCalc itself. It installs and imports as `pytokencal
 
 ## Project status
 
-**Beta.** Current version **1.3.0** (`Development Status :: 5 - Production/Stable` in
+**Beta.** Current version **1.4.1** (`Development Status :: 5 - Production/Stable` in
 `pyproject.toml`). The local OpenAI/HuggingFace counting path is well covered by tests;
 provider-specific paths require their optional dependencies. See
 [`ROADMAP_HONEST.md`](ROADMAP_HONEST.md) for the full honest status and technical-debt
 list.
+
+## MCP server
+
+The 12 MCP tools are now served over a real FastMCP transport:
+
+```bash
+pip install "pytokencalc[mcp]"
+
+# stdio (Claude Desktop, Cursor, etc.)
+pytokencalc-mcp --transport stdio
+
+# HTTP
+pytokencalc-mcp --transport http --host 127.0.0.1 --port 8778
+```
+
+```python
+from pytokencalc import TokenCalculator
+
+server = TokenCalculator().create_mcp_server()
+server.run(transport="stdio")
+```
+
+The tools are the same real handlers documented in `_mcp_tools.py`; no
+external `dab` binary or separate service is involved. Budget/usage state is
+process-scoped, as documented.
 
 ## Installation
 
@@ -173,7 +199,7 @@ pycount "Tell me a story about a robot" --model gpt-4o
 - Complete current-generation model coverage.
 
 **Rejected / deferred:**
-- MCP transport.
+- Bundling the MCP transport (FastMCP) as a mandatory dependency.
 
 Full shipped/blocked/rejected detail: [`QUEUE_STATUS.md`](QUEUE_STATUS.md).
 

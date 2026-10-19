@@ -4,13 +4,14 @@ This file records what was shipped, what is blocked/failed, and what is rejected
 
 ## Shipped
 - Pricing freshness status and local pricing overrides (1.4.0).
+- Real FastMCP transport for the 12 MCP tools, optional `[mcp]` extra (1.4.1).
 
 ## Blocked / failed
 - Automated upstream price feed (deliberately out of scope).
 - Complete current-generation model coverage.
 
 ## Rejected / deferred
-- MCP transport.
+- Bundling FastMCP as a mandatory dependency; the transport stays optional.
 
 ## Policy
 

@@ -157,11 +157,13 @@ do with OpenAI.**
   the shell-out to an undocumented external `dab` binary (with a
   `statguardian` fallback) were removed. Handlers now call the real
   `TokenCounterRegistry` for counts and the `pricing` table for costs;
-  budgets/usage are held in a real in-memory store. There is deliberately
-  no MCP transport in this package, so
-  `TokenCalculator.start_mcp_connector()` raises `NotImplementedError`
-  instead of returning a fake endpoint. Covered by
-  `tests/test_mcp_tools.py` (23 tests) and the rewritten
+  budgets/usage are held in a real in-memory store. **2026-10-19 update:**
+  an optional FastMCP transport (`pytokencalc/mcp_server.py`, extra `[mcp]`)
+  now serves the same 12 tools over stdio/HTTP; without FastMCP installed,
+  `TokenCalculator.create_mcp_server()` raises an actionable
+  `MCPUnavailable` instead of returning a fake endpoint. Covered by
+  `tests/test_mcp_tools.py` and `tests/test_mcp_server.py` (the latter
+  skips when FastMCP is absent), plus the rewritten
   `examples/mcp_pytokencalc.py`, which drives the real handler directly.
 - **`docs/conf.py` + `docs/index.rst`** (removed in this pass) — a Sphinx
   scaffold whose `toctree` pointed at files that never existed

@@ -33,7 +33,7 @@ flowchart TD
 
     Pricing["pricing.py\nstatic USD/1M-token table"] --> API
 
-    subgraph MCPLayer["MCP tool surface (rebuilt 2026-10; no transport in-package)"]
+    subgraph MCPLayer["MCP tool surface (real handlers; optional FastMCP transport)"]
         direction TB
         MCPConn["_mcp_connector.py: TokenCalculator facade"]
         MCPTools["_mcp_tools.py: 12 real tool schemas + handlers"]
@@ -83,7 +83,7 @@ pytokencalc/
 ├── server.py                  # optional Flask REST server
 ├── statguardian_integration.py# quality-contract validation (see caveat below)
 ├── okf_token_baselines.py     # token-count baseline/ratio estimation
-├── _mcp_connector.py          # MCP tool surface facade (real; no transport)
+├── _mcp_connector.py          # MCP tool surface facade (real; optional FastMCP)
 ├── _mcp_tools.py              # MCP tool schemas + real handlers (12 tools)
 └── tokenizers/
     ├── base.py                # TokenCounter / TokenCountResult ABC
@@ -108,11 +108,12 @@ pytokencalc/
   fallback) that is not a dependency of this package. In this pass the fake
   layer was removed and rebuilt for real: handlers now use the actual
   `TokenCounterRegistry` for counts and the static `pricing` table for
-  costs, and are covered by `tests/test_mcp_tools.py` (23 tests). There is
-  deliberately **no MCP server/transport** in this package, so
-  `TokenCalculator.start_mcp_connector()` raises `NotImplementedError`
-  instead of reporting a fake endpoint; drive `get_tools()`/`get_handler()`
-  from your own MCP host. Budget tracking and usage analytics are
+  costs, and are covered by `tests/test_mcp_tools.py` (23 tests). An optional
+  FastMCP transport (`pytokencalc/mcp_server.py`, extra `[mcp]`) serves the
+  same tools over stdio/HTTP; without FastMCP installed,
+  `TokenCalculator.create_mcp_server()` raises an actionable
+  `MCPUnavailable`. You can still drive `get_tools()`/`get_handler()` from
+  your own MCP host. Budget tracking and usage analytics are
   in-memory/process-scoped (PyTokenCalc persists nothing).
 - **No timeout on HuggingFace tokenizer downloads.** Both
   `pytokencalc/tokenizers/huggingface_counter.py:71` and

@@ -8,9 +8,11 @@ has been removed.
 What remains is honest and real: :class:`TokenCalculator` exposes the token
 counting/cost-estimation tool surface (:mod:`pytokencalc._mcp_tools`) backed by
 the library's real :class:`~pytokencalc.tokenizers.TokenCounterRegistry` and
-the static :mod:`pytokencalc.pricing` table. There is no bundled MCP server or
-transport in this package, so :meth:`TokenCalculator.start_mcp_connector`
-raises ``NotImplementedError`` rather than reporting a fake endpoint.
+the static :mod:`pytokencalc.pricing` table. The optional FastMCP transport in
+:mod:`pytokencalc.mcp_server` serves those same tools over stdio or HTTP when
+installed with ``pip install "pytokencalc[mcp]"``; without it, building a
+server raises an actionable :class:`~pytokencalc.mcp_server.MCPUnavailable`
+instead of reporting a fake endpoint.
 """
 
 from typing import Any, Dict, Optional
@@ -45,20 +47,35 @@ class TokenCalculator:
 
         return PyTokenCalcMCPHandler(calc=calc or self, registry=self.registry)
 
-    def start_mcp_connector(self, port: int = 8778) -> str:
-        """Not implemented: this package ships no MCP server/transport.
+    def create_mcp_server(self):
+        """Build a FastMCP server exposing the 12 tools.
 
-        The previous implementation shelled out to a ``dab`` binary that is
-        not a dependency of PyTokenCalc. Use :meth:`get_handler` and
-        :meth:`get_tools` directly (e.g. from your own MCP host), or run the
-        REST server in :mod:`pytokencalc.server`.
+        Returns a FastMCP instance; call ``.run(transport="stdio")`` (or
+        ``"http"`` with host/port) to serve it. Install the optional transport
+        with ``pip install "pytokencalc[mcp]"``.
         """
-        raise NotImplementedError(
-            "PyTokenCalc does not ship an MCP server/transport. The former "
-            "implementation launched an external 'dab' binary that is not a "
-            "dependency. Use TokenCalculator.get_tools()/get_handler() from "
-            "your own MCP host, or pytokencalc.server for the REST API."
-        )
+        from .mcp_server import create_server
+
+        return create_server(self.registry)
+
+    def start_mcp_connector(self, port: int = 8778):
+        """Build the MCP server (non-blocking) and return it.
+
+        Kept as a compatibility alias for callers that used the old facade;
+        the returned object is a real FastMCP server. The process-level CLI is
+        ``pytokencalc-mcp``. Call ``server.run(...)`` to start serving.
+        """
+        return self.create_mcp_server()
+
+    def serve_mcp(
+        self, transport: str = "stdio", host: str = "127.0.0.1", port: int = 8778
+    ) -> None:
+        """Run the MCP server (blocking)."""
+        server = self.create_mcp_server()
+        if transport == "stdio":
+            server.run(transport="stdio")
+        else:
+            server.run(transport=transport, host=host, port=port)
 
     def stop_mcp_connector(self) -> None:
-        """No-op: there is no connector process to stop."""
+        """No-op: the returned server object owns its own lifecycle."""

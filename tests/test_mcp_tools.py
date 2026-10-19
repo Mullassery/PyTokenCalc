@@ -110,9 +110,7 @@ def test_compare_model_costs_picks_real_cheapest(handler):
 
 def test_compare_model_costs_reports_unpriced_model(handler):
     result = _run(handler.compare_model_costs("a b", ["gpt-4o", "mystery-model"]))
-    unpriced = next(
-        c for c in result["comparisons"] if c["model"] == "mystery-model"
-    )
+    unpriced = next(c for c in result["comparisons"] if c["model"] == "mystery-model")
     assert unpriced["error"] == "no pricing data"
 
 
@@ -224,8 +222,14 @@ def test_token_calculator_facade():
     assert len(calc.get_tools()) == 12
     handler = calc.get_handler()
     assert _run(handler.count_tokens("a b", "gpt-4o"))["input_tokens"] == 2
-    with pytest.raises(NotImplementedError):
-        calc.start_mcp_connector()
+    if __import__("importlib").util.find_spec("fastmcp") is None:
+        from pytokencalc.mcp_server import MCPUnavailable
+
+        with pytest.raises(MCPUnavailable):
+            calc.start_mcp_connector()
+    else:
+        server = calc.start_mcp_connector()
+        assert server is not None
     assert calc.stop_mcp_connector() is None
 
 
