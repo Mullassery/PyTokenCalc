@@ -108,6 +108,21 @@ All notable changes to PyTokenCalc are documented in this file.
   no directory side effect, and package re-export (13 new tests).
 - README/API/architecture docs describe the baseline estimate and its
   limitations.
+- CLI baseline workflow: `pytokencalc baseline save`, `baseline list`,
+  `baseline compare`, and `baseline from-jsonl`. `save`/`from-jsonl` build
+  baselines from real `(prompt, output_tokens)` samples (prompts are counted
+  with the exact tokenizer for the given provider/model), and never fabricate
+  or pad samples. `from-jsonl` reports malformed line numbers; empty or
+  missing inputs fail with a clear error.
+- `build_baseline_from_samples()` computes averages and nearest-rank p95
+  values from supplied samples; `OKFTokenBaselines.list_baselines()` lists
+  stored baselines with optional provider/task filters.
+- `BaselineEstimate` now exposes the stored `p95_output_tokens` plus a
+  ratio-scaled `predicted_p95_output_tokens`; `compare_models()` includes
+  `samples`, `p95_input_tokens`, `p95_output_tokens`, and `p95_total_tokens`
+  for tail-cost planning.
+- Tests for save/list/compare/from-jsonl and empty, malformed, and missing
+  input edge cases, plus p95 scaling.
 
 ### Changed
 - `OKFTokenBaselines` no longer creates the baseline directory on

@@ -89,6 +89,7 @@ from .okf_token_baselines import (
     BaselineEstimate,
     OKFTokenBaselines,
     TokenBaseline,
+    build_baseline_from_samples,
     estimate_from_baseline,
 )
 from .quick_cli import QuickCLI
@@ -143,6 +144,7 @@ __all__ = [
     "TokenBaseline",
     "OKFTokenBaselines",
     "BaselineEstimate",
+    "build_baseline_from_samples",
     "estimate_from_baseline",
     # Server and CLI
     "PyTokenCalcServer",

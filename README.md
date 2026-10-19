@@ -194,7 +194,37 @@ store.save_baseline(TokenBaseline(
 
 estimate = estimate_from_baseline("openai", "gpt-4o", "chat", 1000)
 print(estimate.total_tokens)  # 1500 -- baseline estimate, not exact
+print(estimate.p95_output_tokens)           # stored historical p95 output
+print(estimate.predicted_p95_output_tokens) # p95 scaled to the 1000-token input
 ```
+
+`BaselineEstimate` also exposes `p95_output_tokens` (the stored historical
+95th-percentile output) and `predicted_p95_output_tokens` (that p95 scaled by
+`input_tokens / avg_input_tokens`, matching the mean prediction). Both are
+planning estimates for tail behavior, not guarantees.
+
+Save baselines from real `(prompt, output_tokens)` samples with the CLI.
+Prompts are tokenized with the exact counter for the given model; output
+tokens should come from your own request logs. Samples are never fabricated
+or padded.
+
+```bash
+# JSONL: one object per line
+# {"prompt": "Explain BPE", "output_tokens": 120}
+pytokencalc baseline from-jsonl samples.jsonl \
+    --provider openai --model gpt-4o --task-type chat
+
+# JSON: an array, or {"provider": ..., "model": ..., "task_type": ..., "samples": [...]}
+pytokencalc baseline save --samples samples.json \
+    --provider openai --model gpt-4o --task-type chat
+
+pytokencalc baseline list --provider openai
+pytokencalc baseline compare --provider openai --task-type chat
+```
+
+`baseline compare` reports averages plus `p95_input_tokens`,
+`p95_output_tokens`, and `p95_total_tokens` for each model. All commands accept
+`--baseline-dir DIR` (default: `./token_baselines`).
 
 Returns `None` when no baseline exists. For exact counts use `count_tokens()`.
 

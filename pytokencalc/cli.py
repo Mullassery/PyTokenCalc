@@ -2,8 +2,14 @@
 
 import json
 import sys
+from dataclasses import asdict
+from pathlib import Path
 from typing import Optional
 
+from .okf_token_baselines import (
+    OKFTokenBaselines,
+    build_baseline_from_samples,
+)
 from .tokenizers import TokenCounterCache, TokenCounterRegistry
 
 
@@ -161,6 +167,194 @@ class CLIInterface:
         }
 
 
+def _parse_cli_options(args, allowed):
+    """Parse ``--key value`` / ``--key=value`` options plus positionals."""
+    options = {}
+    positional = []
+    index = 0
+
+    while index < len(args):
+        arg = args[index]
+        if arg.startswith("--"):
+            name = arg[2:]
+            if "=" in name:
+                name, value = name.split("=", 1)
+            else:
+                if index + 1 >= len(args):
+                    raise ValueError(f"--{name} requires a value")
+                value = args[index + 1]
+                index += 1
+
+            key = name.replace("-", "_")
+            if key not in allowed:
+                raise ValueError(f"Unknown option: --{name}")
+            options[key] = value
+        elif arg.startswith("-"):
+            raise ValueError(f"Unknown option: {arg}")
+        else:
+            positional.append(arg)
+
+        index += 1
+
+    return options, positional
+
+
+def _required_option(options, key):
+    value = options.get(key)
+    if not value:
+        raise ValueError(f"--{key.replace('_', '-')} is required")
+    return value
+
+
+def _load_json_samples(path):
+    """Load a JSON array, or an object with a ``samples`` array."""
+    try:
+        raw = json.loads(path.read_text())
+    except FileNotFoundError as exc:
+        raise FileNotFoundError(f"Samples file not found: {path}") from exc
+
+    metadata = {}
+    if isinstance(raw, list):
+        samples = raw
+    elif isinstance(raw, dict):
+        metadata = {key: raw[key] for key in ("provider", "model", "task_type") if key in raw}
+        if not isinstance(raw.get("samples"), list):
+            raise ValueError('Samples JSON must be an array or an object with a "samples" array')
+        samples = raw["samples"]
+    else:
+        raise ValueError('Samples JSON must be an array or an object with a "samples" array')
+
+    return samples, metadata
+
+
+def _load_jsonl_samples(path):
+    """Load one sample object per non-blank line, reporting line numbers."""
+    try:
+        lines = path.read_text().splitlines()
+    except FileNotFoundError as exc:
+        raise FileNotFoundError(f"Samples file not found: {path}") from exc
+
+    samples = []
+    for line_number, line in enumerate(lines, start=1):
+        if not line.strip():
+            continue
+        try:
+            sample = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"{path}:{line_number}: invalid JSON: {exc.msg}") from exc
+        if not isinstance(sample, dict):
+            raise ValueError(f"{path}:{line_number}: each line must be a JSON object")
+        samples.append(sample)
+
+    return samples
+
+
+def _save_samples_as_baseline(cli, options, samples, metadata):
+    provider = options.get("provider") or metadata.get("provider")
+    model = options.get("model") or metadata.get("model")
+    task_type = options.get("task_type") or metadata.get("task_type")
+
+    if not provider:
+        raise ValueError("--provider is required")
+    if not model:
+        raise ValueError("--model is required")
+    if not task_type:
+        raise ValueError("--task-type is required")
+
+    def count_prompt(prompt):
+        return cli.registry.count_tokens(model, prompt, provider).input_tokens
+
+    baseline = build_baseline_from_samples(
+        provider,
+        model,
+        task_type,
+        samples,
+        input_counter=count_prompt,
+    )
+
+    baseline_dir = options.get("baseline_dir")
+    store = OKFTokenBaselines(Path(baseline_dir) if baseline_dir else None)
+    store.save_baseline(baseline)
+
+    filename = f"{baseline.provider}_{baseline.model}_{baseline.task_type}.json"
+    return {
+        "status": "success",
+        "baseline": asdict(baseline),
+        "path": str(store.baseline_dir / filename),
+    }
+
+
+def _handle_baseline_command(cli, args):
+    if not args:
+        raise ValueError("baseline requires a subcommand: save, list, compare, from-jsonl")
+
+    subcommand = args[0]
+    rest = args[1:]
+    common = {"provider", "model", "task_type", "baseline_dir"}
+
+    if subcommand == "save":
+        options, positional = _parse_cli_options(rest, common | {"samples"})
+        source = options.get("samples") or (positional[0] if positional else None)
+        if not source:
+            raise ValueError("baseline save requires --samples PATH")
+        if len(positional) > 1:
+            raise ValueError("baseline save accepts a single samples file")
+
+        samples, metadata = _load_json_samples(Path(source))
+        return _save_samples_as_baseline(cli, options, samples, metadata)
+
+    if subcommand == "from-jsonl":
+        options, positional = _parse_cli_options(rest, common | {"samples"})
+        source = options.get("samples") or (positional[0] if positional else None)
+        if not source:
+            raise ValueError("baseline from-jsonl requires a JSONL path")
+        if len(positional) > 1:
+            raise ValueError("baseline from-jsonl accepts a single JSONL file")
+
+        samples = _load_jsonl_samples(Path(source))
+        return _save_samples_as_baseline(cli, options, samples, {})
+
+    if subcommand == "list":
+        options, positional = _parse_cli_options(rest, common)
+        if positional:
+            raise ValueError("baseline list takes no positional arguments")
+
+        baseline_dir = options.get("baseline_dir")
+        store = OKFTokenBaselines(Path(baseline_dir) if baseline_dir else None)
+        baselines = store.list_baselines(
+            provider=options.get("provider"),
+            task_type=options.get("task_type"),
+        )
+        return {
+            "status": "success",
+            "baseline_dir": str(store.baseline_dir),
+            "baselines": [asdict(baseline) for baseline in baselines],
+            "count": len(baselines),
+        }
+
+    if subcommand == "compare":
+        options, positional = _parse_cli_options(rest, common)
+        if positional:
+            raise ValueError("baseline compare takes no positional arguments")
+
+        provider = _required_option(options, "provider")
+        task_type = _required_option(options, "task_type")
+        baseline_dir = options.get("baseline_dir")
+        store = OKFTokenBaselines(Path(baseline_dir) if baseline_dir else None)
+        models = store.compare_models(provider, task_type)
+        return {
+            "status": "success",
+            "provider": provider,
+            "task_type": task_type,
+            "models": models,
+            "count": len(models),
+        }
+
+    raise ValueError(
+        f"Unknown baseline subcommand: {subcommand}. Use save, list, compare, or from-jsonl"
+    )
+
+
 def main():
     """Main CLI entry point."""
     cli = CLIInterface()
@@ -225,6 +419,10 @@ def main():
                     sys.exit(1)
                 status = load_pricing_override(sys.argv[index + 1])
             print(json.dumps(status))
+
+        elif command == "baseline":
+            result = _handle_baseline_command(cli, sys.argv[2:])
+            print(json.dumps(result))
 
         elif command == "help":
             print_help()
@@ -296,6 +494,30 @@ COMMANDS:
 
         Example:
             pytokencalc clear-cache
+
+    baseline save --samples PATH --provider P --model M --task-type T [--baseline-dir DIR]
+        Build and save a historical baseline from a JSON array of real
+        {"prompt": ..., "output_tokens": ...} samples (or input_tokens instead
+        of prompt). The object form {"provider": ..., "model": ...,
+        "task_type": ..., "samples": [...]} may supply the metadata too.
+
+    baseline from-jsonl PATH --provider P --model M --task-type T [--baseline-dir DIR]
+        Same as save, but reads one JSON sample object per non-blank line.
+        Prompts are counted with the exact tokenizer for the given model.
+
+    baseline list [--provider P] [--task-type T] [--baseline-dir DIR]
+        List stored baselines, including sample counts and p95 token data.
+
+    baseline compare --provider P --task-type T [--baseline-dir DIR]
+        Compare stored models, including average and p95 token counts.
+
+        Examples:
+            pytokencalc baseline save --samples samples.json --provider openai
+                --model gpt-4o --task-type chat
+            pytokencalc baseline from-jsonl samples.jsonl --provider openai
+                --model gpt-4o --task-type chat
+            pytokencalc baseline list --provider openai
+            pytokencalc baseline compare --provider openai --task-type chat
 
     help
         Show this help message

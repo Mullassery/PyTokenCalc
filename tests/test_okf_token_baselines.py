@@ -67,9 +67,7 @@ def test_estimate_cost_zero_input_guard(store):
 
 def test_compare_models(store):
     store.save_baseline(_baseline(model="gpt-4o", avg_input_tokens=100, avg_output_tokens=50))
-    store.save_baseline(
-        _baseline(model="gpt-4o-mini", avg_input_tokens=40, avg_output_tokens=10)
-    )
+    store.save_baseline(_baseline(model="gpt-4o-mini", avg_input_tokens=40, avg_output_tokens=10))
 
     result = store.compare_models("openai", "chat")
 
@@ -78,6 +76,10 @@ def test_compare_models(store):
         "avg_total_tokens": 150,
         "input_tokens": 100,
         "output_tokens": 50,
+        "samples": 10,
+        "p95_input_tokens": 200,
+        "p95_output_tokens": 120,
+        "p95_total_tokens": 320,
     }
     assert result["gpt-4o-mini"]["avg_total_tokens"] == 50
 
@@ -102,6 +104,8 @@ def test_estimate_from_baseline_returns_provenance_and_total(store):
         total_tokens=150,
         samples=10,
         method="historical_ratio",
+        p95_output_tokens=120,
+        predicted_p95_output_tokens=120,
     )
 
 
@@ -159,9 +163,7 @@ def test_estimate_from_baseline_malformed_file_raises(store):
     path.write_text("{not valid json")
 
     with pytest.raises(json.JSONDecodeError):
-        estimate_from_baseline(
-            "openai", "gpt-4o", "chat", 100, baseline_dir=store.baseline_dir
-        )
+        estimate_from_baseline("openai", "gpt-4o", "chat", 100, baseline_dir=store.baseline_dir)
 
 
 def test_estimate_from_baseline_does_not_create_default_dir(tmp_path, monkeypatch):
@@ -172,7 +174,108 @@ def test_estimate_from_baseline_does_not_create_default_dir(tmp_path, monkeypatc
 
 
 def test_estimate_from_baseline_is_exported_from_package():
+    from pytokencalc.okf_token_baselines import build_baseline_from_samples
+
     assert pytokencalc.estimate_from_baseline is estimate_from_baseline
     assert pytokencalc.BaselineEstimate is BaselineEstimate
+    assert pytokencalc.build_baseline_from_samples is build_baseline_from_samples
     assert "estimate_from_baseline" in pytokencalc.__all__
     assert "BaselineEstimate" in pytokencalc.__all__
+    assert "build_baseline_from_samples" in pytokencalc.__all__
+
+
+def test_estimate_from_baseline_scales_p95_with_input(store):
+    store.save_baseline(_baseline())
+
+    estimate = estimate_from_baseline(
+        "openai", "gpt-4o", "chat", 200, baseline_dir=store.baseline_dir
+    )
+
+    assert estimate.p95_output_tokens == 120
+    assert estimate.predicted_p95_output_tokens == 240
+
+
+def test_list_baselines_filters_and_sorts(store):
+    store.save_baseline(_baseline(model="gpt-4o"))
+    store.save_baseline(_baseline(model="gpt-4o-mini"))
+    store.save_baseline(_baseline(provider="anthropic", model="claude-3", task_type="chat"))
+
+    all_baselines = store.list_baselines()
+    assert sorted(b.model for b in all_baselines) == [
+        "claude-3",
+        "gpt-4o",
+        "gpt-4o-mini",
+    ]
+
+    openai_chat = store.list_baselines(provider="openai", task_type="chat")
+    assert sorted(b.model for b in openai_chat) == ["gpt-4o", "gpt-4o-mini"]
+    assert store.list_baselines(provider="openai", task_type="embedding") == []
+
+
+def test_list_baselines_missing_dir_is_empty(tmp_path):
+    store = OKFTokenBaselines(baseline_dir=tmp_path / "does-not-exist")
+    assert store.list_baselines() == []
+
+
+def test_build_baseline_from_samples_uses_prompt_counter():
+    from pytokencalc.okf_token_baselines import build_baseline_from_samples
+
+    samples = [
+        {"prompt": "a", "output_tokens": 5},
+        {"prompt": "bb", "output_tokens": 15},
+        {"prompt": "ccc", "output_tokens": 10},
+    ]
+
+    baseline = build_baseline_from_samples(
+        "openai",
+        "gpt-4o",
+        "chat",
+        samples,
+        input_counter=lambda prompt: {"a": 10, "bb": 20, "ccc": 30}[prompt],
+    )
+
+    assert baseline.samples == 3
+    assert baseline.avg_input_tokens == 20
+    assert baseline.avg_output_tokens == 10
+    assert baseline.percentile_95_input == 30
+    assert baseline.percentile_95_output == 15
+
+
+def test_build_baseline_accepts_explicit_input_tokens():
+    from pytokencalc.okf_token_baselines import build_baseline_from_samples
+
+    baseline = build_baseline_from_samples(
+        "openai",
+        "gpt-4o",
+        "chat",
+        [{"input_tokens": 4, "output_tokens": 2}],
+    )
+
+    assert baseline.avg_input_tokens == 4
+    assert baseline.percentile_95_input == 4
+    assert baseline.samples == 1
+
+
+def test_build_baseline_rejects_empty_samples():
+    from pytokencalc.okf_token_baselines import build_baseline_from_samples
+
+    with pytest.raises(ValueError, match="at least one sample"):
+        build_baseline_from_samples("openai", "gpt-4o", "chat", [])
+
+
+@pytest.mark.parametrize(
+    "sample, message",
+    [
+        ({"output_tokens": 1}, "missing prompt or input_tokens"),
+        ({"prompt": "x"}, "missing output_tokens"),
+        ({"prompt": "x", "output_tokens": -1}, "output_tokens must be non-negative"),
+        ({"prompt": "x", "output_tokens": "1"}, "output_tokens must be an integer"),
+        ({"input_tokens": -1, "output_tokens": 1}, "input_tokens must be non-negative"),
+        ({"prompt": "x", "output_tokens": 1}, "prompt requires a tokenizer"),
+    ],
+)
+def test_build_baseline_rejects_malformed_samples(sample, message):
+    from pytokencalc.okf_token_baselines import build_baseline_from_samples
+
+    with pytest.raises(ValueError, match=message):
+        build_baseline_from_samples("openai", "gpt-4o", "chat", [sample])
