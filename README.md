@@ -166,6 +166,17 @@ pycount "Tell me a story about a robot" --model gpt-4o
 - [Examples](examples/) — runnable code samples
 - [Honest status & roadmap](ROADMAP_HONEST.md) — what's tested, what isn't, known bugs, and technical debt
 
+## Known issues and deferred work
+
+**Blocked / failed:**
+- Automated upstream price feed (deliberately out of scope).
+- Complete current-generation model coverage.
+
+**Rejected / deferred:**
+- MCP transport.
+
+Full shipped/blocked/rejected detail: [`QUEUE_STATUS.md`](QUEUE_STATUS.md).
+
 ## Queue status
 
 Shipped, blocked/failed, and rejected work for this repository is documented in
