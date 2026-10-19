@@ -4,9 +4,17 @@ Previously had no dedicated test file (ROADMAP_HONEST.md section 3). These
 use a tmp_path baseline dir so they never touch the caller's cwd.
 """
 
+import json
+
 import pytest
 
-from pytokencalc.okf_token_baselines import OKFTokenBaselines, TokenBaseline
+import pytokencalc
+from pytokencalc.okf_token_baselines import (
+    BaselineEstimate,
+    OKFTokenBaselines,
+    TokenBaseline,
+    estimate_from_baseline,
+)
 
 
 def _baseline(**overrides):
@@ -76,3 +84,95 @@ def test_compare_models(store):
 
 def test_compare_models_empty_when_none_saved(store):
     assert store.compare_models("anthropic", "chat") == {}
+
+
+def test_estimate_from_baseline_returns_provenance_and_total(store):
+    store.save_baseline(_baseline())
+
+    estimate = estimate_from_baseline(
+        "openai", "gpt-4o", "chat", 100, baseline_dir=store.baseline_dir
+    )
+
+    assert estimate == BaselineEstimate(
+        provider="openai",
+        model="gpt-4o",
+        task_type="chat",
+        input_tokens=100,
+        predicted_output_tokens=50,
+        total_tokens=150,
+        samples=10,
+        method="historical_ratio",
+    )
+
+
+def test_estimate_from_baseline_scales_with_input(store):
+    store.save_baseline(_baseline())
+
+    estimate = estimate_from_baseline(
+        "openai", "gpt-4o", "chat", 200, baseline_dir=store.baseline_dir
+    )
+
+    assert estimate.predicted_output_tokens == 100
+    assert estimate.total_tokens == 300
+
+
+def test_estimate_from_baseline_missing_baseline_returns_none(store):
+    estimate = estimate_from_baseline(
+        "openai", "does-not-exist", "chat", 100, baseline_dir=store.baseline_dir
+    )
+    assert estimate is None
+
+
+def test_estimate_from_baseline_zero_input_average_avoids_division(store):
+    store.save_baseline(_baseline(avg_input_tokens=0, avg_output_tokens=0))
+
+    estimate = estimate_from_baseline(
+        "openai", "gpt-4o", "chat", 100, baseline_dir=store.baseline_dir
+    )
+
+    assert estimate.predicted_output_tokens == 0
+    assert estimate.total_tokens == 100
+
+
+@pytest.mark.parametrize("bad_value", [-1, -100])
+def test_estimate_from_baseline_rejects_negative_input(store, bad_value):
+    store.save_baseline(_baseline())
+
+    with pytest.raises(ValueError, match="non-negative"):
+        estimate_from_baseline(
+            "openai", "gpt-4o", "chat", bad_value, baseline_dir=store.baseline_dir
+        )
+
+
+@pytest.mark.parametrize("bad_value", [1.5, "100", None, True])
+def test_estimate_from_baseline_rejects_non_int_input(store, bad_value):
+    store.save_baseline(_baseline())
+
+    with pytest.raises(TypeError, match="input_tokens must be an int"):
+        estimate_from_baseline(
+            "openai", "gpt-4o", "chat", bad_value, baseline_dir=store.baseline_dir
+        )
+
+
+def test_estimate_from_baseline_malformed_file_raises(store):
+    path = store.baseline_dir / "openai_gpt-4o_chat.json"
+    path.write_text("{not valid json")
+
+    with pytest.raises(json.JSONDecodeError):
+        estimate_from_baseline(
+            "openai", "gpt-4o", "chat", 100, baseline_dir=store.baseline_dir
+        )
+
+
+def test_estimate_from_baseline_does_not_create_default_dir(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+
+    assert estimate_from_baseline("openai", "gpt-4o", "chat", 100) is None
+    assert not (tmp_path / "token_baselines").exists()
+
+
+def test_estimate_from_baseline_is_exported_from_package():
+    assert pytokencalc.estimate_from_baseline is estimate_from_baseline
+    assert pytokencalc.BaselineEstimate is BaselineEstimate
+    assert "estimate_from_baseline" in pytokencalc.__all__
+    assert "BaselineEstimate" in pytokencalc.__all__

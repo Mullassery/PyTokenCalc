@@ -95,6 +95,27 @@ All notable changes to PyTokenCalc are documented in this file.
 
 ## [Unreleased]
 
+### Added
+- `estimate_from_baseline(provider, model, task_type, input_tokens, *,
+  baseline_dir=None)` and `BaselineEstimate`, re-exported from the package.
+  Exposes the existing OKF historical-baseline ratio logic as a clearly
+  named, opt-in API. It returns predicted output/total tokens plus the
+  sample count, or `None` when no baseline exists. **It is a baseline
+  estimate based on past provider/model/task samples, not an exact
+  tokenizer count.**
+- Tests for the new API: provenance/scaling, missing baseline, zero
+  historical input guard, negative/non-int input, malformed baseline JSON,
+  no directory side effect, and package re-export (13 new tests).
+- README/API/architecture docs describe the baseline estimate and its
+  limitations.
+
+### Changed
+- `OKFTokenBaselines` no longer creates the baseline directory on
+  construction; `save_baseline()` creates it. Read-only lookups no longer
+  leave an empty `token_baselines/` directory in the caller's cwd.
+- Default `count_tokens()` and `estimate_cost()` behavior is unchanged;
+  neither uses baselines.
+
 ## [1.2.1] - 2026-09-22
 
 ### Fixed

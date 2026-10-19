@@ -85,7 +85,12 @@ from .exceptions import (
 from .model_discovery import ModelDiscovery
 
 # OKF integration (token baselines, optimization)
-from .okf_token_baselines import OKFTokenBaselines, TokenBaseline
+from .okf_token_baselines import (
+    BaselineEstimate,
+    OKFTokenBaselines,
+    TokenBaseline,
+    estimate_from_baseline,
+)
 from .quick_cli import QuickCLI
 
 # Server and CLI
@@ -137,6 +142,8 @@ __all__ = [
     # OKF integration
     "TokenBaseline",
     "OKFTokenBaselines",
+    "BaselineEstimate",
+    "estimate_from_baseline",
     # Server and CLI
     "PyTokenCalcServer",
     "CLIInterface",

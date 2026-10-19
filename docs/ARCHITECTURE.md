@@ -128,9 +128,11 @@ pytokencalc/
   over a minute before the underlying library gave up.
 - **`statguardian_integration.py` and `okf_token_baselines.py`** implement
   real, testable logic (contract validation dataclasses, ratio-based token
-  baselines) but their outputs are not wired into `count_tokens()` /
-  `estimate_cost()` at all — they are separate opt-in APIs. If you don't
-  explicitly import and call them, they do nothing.
+  baselines) but are separate opt-in APIs: their outputs are not used by
+  `count_tokens()` / `estimate_cost()`, which remain exact tokenizer counts
+  and USD pricing respectively. `okf_token_baselines.py` is exposed as
+  `pytokencalc.estimate_from_baseline()` — a historical ratio estimate (not
+  a tokenizer count) that returns `None` without saved baselines.
 
 See [ROADMAP_HONEST.md](../ROADMAP_HONEST.md) for the full technical-debt
 list.

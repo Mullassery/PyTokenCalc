@@ -146,7 +146,11 @@ do with OpenAI.**
   `pytokencalc/okf_token_baselines.py` implement real logic but are not
   called anywhere inside `count_tokens()`/`estimate_cost()` — they are
   separate, opt-in APIs most users of the headline API will never touch,
-  and would not notice if they silently broke.
+  and would not notice if they silently broke. `okf_token_baselines.py` is
+  now exposed as `pytokencalc.estimate_from_baseline()` (a historical
+  ratio estimate, explicitly not an exact count); it still requires callers
+  to populate a baseline directory first, and there are no bundled baseline
+  samples.
 
 ## 4. Dead / experimental code that should not be presented as shipped
 

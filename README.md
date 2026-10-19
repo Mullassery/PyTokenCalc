@@ -175,6 +175,29 @@ for chunk in live_response_chunks:  # e.g. OpenAI SSE deltas
     print(f"+{delta} tokens, {stream.total_tokens} total")
 ```
 
+**Historical baseline estimates (opt-in, not exact)** — if you have saved
+samples for a provider/model/task, `estimate_from_baseline()` extrapolates
+total tokens from the historical output/input ratio. This is a planning
+estimate, **not** a tokenizer count, and `count_tokens()`/`estimate_cost()`
+never use it:
+
+```python
+from pathlib import Path
+from pytokencalc import OKFTokenBaselines, TokenBaseline, estimate_from_baseline
+
+store = OKFTokenBaselines(baseline_dir=Path("token_baselines"))
+store.save_baseline(TokenBaseline(
+    provider="openai", model="gpt-4o", task_type="chat",
+    avg_input_tokens=100, avg_output_tokens=50, samples=200,
+    percentile_95_input=250, percentile_95_output=140,
+))
+
+estimate = estimate_from_baseline("openai", "gpt-4o", "chat", 1000)
+print(estimate.total_tokens)  # 1500 -- baseline estimate, not exact
+```
+
+Returns `None` when no baseline exists. For exact counts use `count_tokens()`.
+
 **CLI:**
 
 ```bash

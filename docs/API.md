@@ -40,6 +40,35 @@ Note: this is unrelated to `OKFTokenBaselines.estimate_cost()`, which
 predicts a *token count* from a historical input/output ratio, not a
 dollar figure.
 
+### `estimate_from_baseline(provider, model, task_type, input_tokens, *, baseline_dir=None) -> Optional[BaselineEstimate]`
+
+Opt-in **historical baseline estimate** backed by saved samples in
+`token_baselines/<provider>_<model>_<task_type>.json` (written by
+`OKFTokenBaselines.save_baseline()`).
+
+> **This is not an exact token count.** It extrapolates expected output from
+> the stored average output/input ratio for that provider/model/task. It does
+> not run a tokenizer. Use `count_tokens()` when you need exact counting.
+
+```python
+from pathlib import Path
+from pytokencalc import OKFTokenBaselines, TokenBaseline, estimate_from_baseline
+
+store = OKFTokenBaselines(baseline_dir=Path("token_baselines"))
+store.save_baseline(TokenBaseline(
+    provider="openai", model="gpt-4o", task_type="chat",
+    avg_input_tokens=100, avg_output_tokens=50, samples=200,
+    percentile_95_input=250, percentile_95_output=140,
+))
+
+estimate = estimate_from_baseline("openai", "gpt-4o", "chat", 1000)
+# estimate.total_tokens == 1500, estimate.samples == 200
+```
+
+Returns `None` if no matching baseline exists. Raises `TypeError` for a
+non-int `input_tokens`, `ValueError` for a negative one. `count_tokens()`
+and `estimate_cost()` do **not** consult baselines.
+
 ## Lower-level API
 
 For anything beyond the two convenience functions above, use

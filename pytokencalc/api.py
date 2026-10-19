@@ -11,7 +11,9 @@ a ``TokenCountResult``, for the common case where you just want the number.
 ``estimate_cost`` is backed by the static pricing table in
 ``pytokencalc.pricing`` and returns a real dollar figure -- it is unrelated
 to ``OKFTokenBaselines.estimate_cost()``, which predicts an *output token
-count* from a historical input/output ratio, not a price.
+count* from a historical input/output ratio, not a price. Use the opt-in
+``pytokencalc.estimate_from_baseline()`` for that baseline estimate; it is
+not an exact tokenizer count.
 """
 
 from typing import Optional
@@ -65,7 +67,8 @@ def estimate_cost(model: str, input_tokens: int, output_tokens: int = 0) -> floa
     Uses the static, hand-maintained pricing table in ``pytokencalc.pricing``
     (see that module for sources and its last-updated date). This is a
     dollar-cost estimate, not a token-count prediction -- for the latter
-    see ``OKFTokenBaselines.estimate_cost()``.
+    see ``pytokencalc.estimate_from_baseline()`` (a historical estimate,
+    not an exact count) or ``OKFTokenBaselines.estimate_cost()``.
 
     Args:
         model: Model ID (e.g. "gpt-4o", "claude-3-opus").
