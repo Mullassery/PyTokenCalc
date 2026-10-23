@@ -22,11 +22,14 @@ Cohere token counting is always a live API call.
 `TokenCounterRegistry` auto-detects the provider from the model string
 (see `pytokencalc/tokenizers/registry.py::_auto_detect_counter`):
 
-- `gpt-4*`, `gpt-3.5*`, `text-davinci-*`, `text-embedding-*` → OpenAI
+- `gpt-4*`, `gpt-3.5*`, `gpt-5*`, `gpt-4.1*`, `gpt-4.5*`,
+  `text-davinci-*`, `text-embedding-*`, and `o1*`/`o3*`/`o4*` → OpenAI
 - `claude-*` → Anthropic
 - `gemini-*` → Google
 - `command*` → Cohere
-- `gpt-35*`, or `gpt-4*` combined with "azure" in the name → Azure OpenAI
+- `gpt-35*`, or an Azure-qualified GPT/o-series name → Azure OpenAI
+- provider-prefixed IDs such as `openai/o3-mini` are handled by inspecting the
+  final path segment
 - `ollama*`, `llama2`, `neural-chat`, `dolphin`, `openchat`, `openhermes`,
   `wizardlm` → Ollama (if reachable)
 - `deepseek*`, `falcon*`, `text-bison`, `code-bison`, `llama*`, `mistral*`,
@@ -39,6 +42,26 @@ For anything not on this list -- a brand-new model, a fine-tuned/proprietary
 model, a custom serving endpoint -- see `ModelDiscovery` (pattern-based
 suggestions) and `CustomProviderCounter` (register your own endpoint) in
 [API.md](API.md) and [CUSTOM_PROVIDERS.md](../CUSTOM_PROVIDERS.md).
+
+## Catalog metadata
+
+`get_model_spec()` and `list_models()` expose a reviewed metadata snapshot
+including context window, max output, tokenizer family, modalities, aliases,
+and optional provider endpoints:
+
+```python
+from pytokencalc import get_model_spec, list_models
+
+spec = get_model_spec("openai/gpt-4o")
+print(spec.context_length, spec.max_output_tokens, spec.input_modalities)
+
+for model in list_models("anthropic"):
+    print(model.id, model.context_length)
+```
+
+The catalog does not add pricing by itself. Use `load_pricing_override()` for
+private/new prices, or import a downloaded OpenRouter `/api/v1/models` snapshot
+with `import_openrouter_catalog_file()`.
 
 ## Cost estimation coverage
 

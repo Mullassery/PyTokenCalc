@@ -15,6 +15,25 @@ dollar cost of a request from a maintained per-model pricing table. It is pure P
 the speed comes from the `tiktoken` and HuggingFace `tokenizers` libraries it wraps, not
 from compiled code in PyTokenCalc itself. It installs and imports as `pytokencalc`.
 
+## What's new in 1.5.0
+
+- **Model catalog** — context windows, output limits, modalities, tokenizer
+  families, aliases, provider-prefixed IDs, and optional endpoint metadata.
+- **Usage-aware costs** — cache reads/writes, request fees, line-item
+  `CostBreakdown`, and `compare_models()`.
+- **Chat preflight** — `preflight(messages, tools=..., max_output_tokens=...)`
+  reports prompt tokens, context fit, and expected cost before sending.
+- **Usage reconciliation** — `reconcile(response)` normalizes OpenAI,
+  Anthropic, and OpenRouter usage and compares actual vs expected cost.
+- **OpenRouter snapshot import** — offline import for model and endpoint
+  snapshots, including per-provider pricing/uptime/latency metadata.
+- **Endpoint comparison** — `compare_endpoints()` ranks providers serving the
+  same model by cost.
+- **Usage ledger** — optional JSONL spend/usage summaries.
+- **Parity benchmark** — compare local counts against provider-reported usage.
+- **REST v1 + OpenAPI** — `/v1/models`, `/v1/cost`, `/v1/reconcile`,
+  `/v1/preflight`, and `/openapi.json`.
+
 ## Features / Highlights
 
 - **Multi-provider** — OpenAI, Anthropic Claude, Google Gemini, Cohere, Azure-hosted
@@ -62,12 +81,31 @@ from compiled code in PyTokenCalc itself. It installs and imports as `pytokencal
   installed encoding's tokenization has changed since it was last verified.
 - **CLI** — `pytokencalc` and the `pycount` shortcut, installed automatically.
 
+## API at a glance
+
+| Need | API |
+|---|---|
+| Count plain text | `count_tokens(text, model)` |
+| Estimate input/output cost | `estimate_cost(model, input_tokens, output_tokens)` |
+| Price cache/request usage | `Usage` + `estimate_usage(model, usage)` |
+| Compare models | `compare_models(models, usage)` |
+| Check a chat request before sending | `preflight(messages, model, tools=..., max_output_tokens=...)` |
+| Check actual usage after a response | `reconcile(model, response)` |
+| Look up context/metadata | `get_model_spec(model)` / `list_models()` |
+| Compare providers for one model | `compare_endpoints(model, usage)` |
+| Import OpenRouter data | `import_openrouter_catalog_file(path)` / `import_openrouter_endpoints_file(path)` |
+| Persist usage | `UsageLedger(path)` |
+| Measure tokenizer parity | `benchmark_counts(samples)` |
+
 ## Who it's for / Use cases
 
 - **Budget tracking** — count a prompt and price the input/output before sending a
   request.
 - **Preventing cost overruns** — reject requests above a cost threshold.
 - **Comparing providers** — price the same prompt across models before choosing one.
+- **Preflight checks** — reject a request before it exceeds context or budget.
+- **Spend reconciliation** — compare estimated and provider-reported cost.
+- **Provider selection** — compare endpoint prices for open models.
 - **Streaming cost awareness** — track tokens as a response streams in.
 
 ## What it is not
@@ -77,10 +115,11 @@ from compiled code in PyTokenCalc itself. It installs and imports as `pytokencal
   transport ships only with `pip install "pytokencalc[mcp]"`; without that extra,
   building a server raises an actionable install error. Budget/usage tools are in-memory
   and process-scoped.
-- **No committed benchmark result.** The performance numbers are informal local
-  observations, not a checked-in benchmark; there is no results file backing a specific
-  claim. For OpenAI models PyTokenCalc *is* `tiktoken` under the hood, with a roughly
-  2–5% wrapper overhead, not a speedup.
+- **No committed benchmark result.** `benchmark_counts()` provides an offline
+  harness, but there is no checked-in provider results file backing a specific
+  performance claim. The speed numbers are informal local observations; for
+  OpenAI models PyTokenCalc *is* `tiktoken` under the hood, with a roughly 2–5%
+  wrapper overhead, not a speedup.
 - **Lint/type coverage is partial.** `ruff check` runs in CI, but `black` formatting and
   `mypy` typing are configured yet not enforced (separate passes).
 - **Anthropic/Google/Cohere counting makes a live network call** to the provider's API, so
@@ -190,6 +229,89 @@ for model in ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"]:
     print(f"{model}: {tokens} tokens, ${cost:.6f}")
 ```
 
+**Compare models for one usage profile:**
+
+```python
+from pytokencalc import Usage, compare_models
+
+usage = Usage(input_tokens=2_000, output_tokens=500, cached_input_tokens=800)
+for item in compare_models(["gpt-4o", "gpt-4o-mini", "claude-3-5-sonnet"], usage):
+    cost = item.cost.total_usd if item.cost else None
+    print(item.model, cost, item.error)
+```
+
+**Preflight a chat request before sending it:**
+
+```python
+from pytokencalc import preflight
+
+result = preflight(
+    [
+        {"role": "system", "content": "Be concise."},
+        {"role": "user", "content": "Explain vector databases."},
+    ],
+    "gpt-4o",
+    max_output_tokens=500,
+)
+print(result.input_tokens, result.context_remaining, result.fits)
+print(result.estimated_cost_usd, result.warnings)
+```
+
+**Reconcile provider usage after a response:**
+
+```python
+from pytokencalc import reconcile
+
+result = reconcile(
+    "gpt-4o",
+    response,  # full provider response or {"usage": ...}
+    provider="openrouter",
+    expected_cost_usd=0.001,
+)
+print(result.cost.total_usd, result.delta_usd, result.provider_reported_cost_usd)
+```
+
+**Import OpenRouter snapshots and compare endpoints** — explicit and offline;
+the library never fetches these URLs for you:
+
+```bash
+curl -s https://openrouter.ai/api/v1/models -o models.json
+pytokencalc catalog import --file models.json
+curl -s https://openrouter.ai/api/v1/models/openai/gpt-4o/endpoints -o endpoints.json
+pytokencalc endpoints import --file endpoints.json --model openai/gpt-4o
+```
+
+```python
+from pytokencalc import Usage, compare_endpoints
+
+for item in compare_endpoints("openai/gpt-4o", Usage(input_tokens=1_000)):
+    print(item.endpoint.provider, item.cost.total_usd if item.cost else item.error)
+```
+
+**Record usage in an optional JSONL ledger:**
+
+```python
+from pytokencalc import UsageLedger, reconcile
+
+ledger = UsageLedger("usage.jsonl")
+ledger.record_reconciliation(
+    reconcile("gpt-4o", response, expected_cost_usd=0.001),
+    tags={"env": "prod"},
+    generation_id="gen-1",
+)
+print(ledger.summary())
+```
+
+**Measure tokenizer parity against real provider usage:**
+
+```python
+from pytokencalc import benchmark_counts
+from pytokencalc.benchmark import load_samples
+
+summary = benchmark_counts(load_samples("samples.jsonl"))
+print(summary.exact_match_rate, summary.mean_absolute_percent_error)
+```
+
 **Streaming/incremental counting** — recomputes against the full accumulated text on each
 chunk, so it stays correct across BPE chunk boundaries:
 
@@ -273,6 +395,7 @@ pycount "Tell me a story about a robot" --model gpt-4o
 - [Architecture](docs/ARCHITECTURE.md) — component overview, request flow, and honest architectural gaps
 - [Examples](examples/) — runnable code samples
 - [Honest status & roadmap](ROADMAP_HONEST.md) — what's tested, what isn't, known bugs, and technical debt
+- [Changelog](CHANGELOG.md) — release history, including 1.5.0
 
 ## Known issues and deferred work
 

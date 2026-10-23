@@ -12,10 +12,12 @@ flowchart TD
     User["Caller code"] --> API["pytokencalc.count_tokens() / estimate_cost()\n(pytokencalc/api.py)"]
     User --> CLI["CLI: pytokencalc / pycount\n(cli.py, quick_cli.py)"]
     User --> Server["Optional REST server (flask)\n(server.py, 127.0.0.1 only, no auth)"]
+    User --> Advanced["Advanced APIs\npreflight / reconcile / catalog / endpoints / benchmark / ledger"]
 
     API --> Registry["TokenCounterRegistry\n(tokenizers/registry.py)"]
     CLI --> Registry
     Server --> Registry
+    Advanced --> Registry
 
     Registry --> Cache["TokenCounterCache\n(tokenizers/cache.py)"]
     Registry --> Discovery["ModelDiscovery\n(model_discovery.py)"]
@@ -31,7 +33,9 @@ flowchart TD
     Registry --> LocalInf["LocalInferenceTokenCounter\n(LM Studio / LocalAI / etc, local HTTP)"]
     Registry --> Custom["CustomProviderCounter\n(user-registered HTTP endpoint)"]
 
-    Pricing["pricing.py\nstatic USD/1M-token table"] --> API
+    Pricing["pricing.py\nstatic USD/1M table + Usage/CostBreakdown"] --> API
+    Pricing --> Advanced
+    Catalog["catalog.py\nmodel metadata"] --> Advanced
 
     subgraph MCPLayer["MCP tool surface (real handlers; optional FastMCP transport)"]
         direction TB
@@ -69,9 +73,30 @@ flowchart TD
    tool token counts, latency, cache status, provider/platform metadata)
    and cached by `TokenCounterCache` (keyed by provider/model/text; a cache
    can be injected, otherwise each registry owns one).
-5. `estimate_cost()` is independent of all of the above: it looks up
-   `model` in the static `PRICING_TABLE` in `pricing.py` and multiplies by
-   token counts. It does not call any provider API.
+5. Cost APIs are independent of tokenizer routing: `estimate_cost()` looks
+   up `model` in `PRICING_TABLE` and delegates to `estimate_usage()`, which
+   produces a line-item `CostBreakdown` (input/output/cache/request).
+   `preflight()` combines registry counts, catalog context limits, and
+   `estimate_usage()`; `reconcile()` parses provider usage and compares it
+   with an expected cost. None of these call a provider API.
+
+## Cost, preflight, and reconciliation flows
+
+- **Catalog** (`catalog.py`) resolves canonical model IDs, aliases, context
+  limits, modalities, and endpoint metadata. Pricing remains in `pricing.py`.
+- **OpenRouter import** (`openrouter.py`) registers downloaded model/endpoint
+  snapshots into the in-process catalog and pricing table. It never fetches
+  at runtime.
+- **Preflight** (`preflight.py`) counts message/tool text with the real
+  tokenizer, adds estimated chat framing and image tokens, checks the catalog
+  context window, and prices the projected usage.
+- **Reconcile** (`reconcile.py`) normalizes OpenAI/Anthropic/OpenRouter usage
+  into `Usage`, prices it with `estimate_usage()`, and reports deltas against
+  a prior estimate or provider-reported cost.
+- **Endpoint comparison** (`endpoints.py`) applies endpoint-specific prices
+  when present and falls back to model-level pricing.
+- **Ledger** (`ledger.py`) optionally appends reconciled records to JSONL;
+  **benchmark** (`benchmark.py`) compares local counts with provider usage.
 
 ## Directory layout
 

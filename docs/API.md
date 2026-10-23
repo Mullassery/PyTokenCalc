@@ -1,5 +1,21 @@
 # API Reference
 
+## Which API should I use?
+
+| Goal | Entry point |
+|---|---|
+| Count plain text | `count_tokens(text, model)` |
+| Estimate input/output cost | `estimate_cost(model, input_tokens, output_tokens)` |
+| Price cache reads/writes and request fees | `Usage` + `estimate_usage(model, usage)` |
+| Compare models for one usage profile | `compare_models(models, usage)` |
+| Inspect context window/modalities | `get_model_spec(model)` / `list_models()` |
+| Check a chat request before sending | `preflight(messages, model, ...)` |
+| Reconcile provider usage/cost | `reconcile(model, response, ...)` |
+| Compare providers for one model | `compare_endpoints(model, usage)` |
+| Import OpenRouter snapshots | `import_openrouter_catalog_file()` / `import_openrouter_endpoints_file()` |
+| Persist usage/spend | `UsageLedger(path)` |
+| Measure tokenizer parity | `benchmark_counts(samples)` |
+
 ## Quick start (top-level API)
 
 ```python
@@ -144,6 +160,12 @@ pycount -m claude-3-sonnet -j "Hello world"    # JSON output
 ## Model catalog
 
 ```python
+get_model_spec(model: str) -> Optional[ModelSpec]
+list_models(provider: Optional[str] = None) -> list[ModelSpec]
+register_model_spec(spec: ModelSpec, *, overwrite: bool = False) -> None
+```
+
+```python
 from pytokencalc import get_model_spec, list_models
 
 spec = get_model_spec("openai/gpt-4o")
@@ -160,6 +182,11 @@ limits, modalities, and optional provider endpoints. Add custom metadata with
 `register_model_spec()`.
 
 ## Usage-aware costs
+
+```python
+estimate_usage(model: str, usage: Usage, provider: Optional[str] = None) -> CostBreakdown
+compare_models(models: list[str], usage: Usage) -> list[ModelCostComparison]
+```
 
 `Usage` separates total prompt tokens from cache reads/writes:
 
@@ -192,6 +219,18 @@ for item in compare_models(["gpt-4o", "gpt-4o-mini"], usage):
 ## Reconciliation
 
 ```python
+parse_usage(payload, provider: Optional[str] = None) -> Usage
+reconcile(
+    model: str,
+    response,
+    *,
+    provider: Optional[str] = None,
+    expected_usage: Optional[Usage] = None,
+    expected_cost_usd: Optional[float] = None,
+) -> Reconciliation
+```
+
+```python
 from pytokencalc import reconcile
 
 result = reconcile(
@@ -210,6 +249,23 @@ Supports OpenAI (`prompt_tokens` / `completion_tokens`), Anthropic
 `cache_write_tokens`), and generic usage mappings.
 
 ## Chat preflight
+
+```python
+preflight(
+    messages,
+    model: str,
+    *,
+    tools=None,
+    max_output_tokens: Optional[int] = None,
+    provider: Optional[str] = None,
+    registry=None,
+) -> PreflightResult
+```
+
+`PreflightResult` includes `input_tokens`, `text_tokens`, `image_tokens`,
+`tool_tokens`, `message_overhead_tokens`, `context_length`,
+`max_output_tokens`, `context_remaining`, `fits`, `estimated_cost_usd`,
+`cost`, `estimated`, and `warnings`.
 
 ```python
 from pytokencalc import preflight
@@ -234,6 +290,13 @@ window (`None` when the model is unknown).
 
 ## OpenRouter snapshot import
 
+```python
+import_openrouter_catalog(payload, *, source="snapshot", include_variants=False)
+import_openrouter_catalog_file(path, *, include_variants=False)
+import_openrouter_endpoints(payload, *, model_id=None, source="snapshot")
+import_openrouter_endpoints_file(path, *, model_id=None)
+```
+
 No network request is made by the library. Download the public catalog, then
 import it explicitly:
 
@@ -255,7 +318,19 @@ containing `:` (`:free`, `:nitro`) are skipped by default; pass
 `include_variants=True` to include them. Imported prices are in-memory only --
 persist them with a pricing override if you need reproducibility across runs.
 
+For provider-level stats/prices, import an endpoints snapshot separately:
+
+```bash
+curl -s https://openrouter.ai/api/v1/models/openai/gpt-4o/endpoints -o endpoints.json
+pytokencalc endpoints import --file endpoints.json --model openai/gpt-4o
+```
+
 ## Endpoint comparison
+
+```python
+compare_endpoints(model: str, usage: Usage, *, provider: Optional[str] = None)
+    -> list[EndpointCostComparison]
+```
 
 ```python
 from pytokencalc import compare_endpoints, import_openrouter_endpoints_file, Usage
@@ -273,6 +348,11 @@ with an error. Imported uptime/latency/throughput are metadata only --
 PyTokenCalc does not route requests.
 
 ## Parity benchmark
+
+```python
+benchmark_counts(samples, *, model=None, provider=None, registry=None) -> ParitySummary
+load_samples(path) -> list[dict]
+```
 
 ```python
 from pytokencalc import benchmark_counts
@@ -297,6 +377,13 @@ The benchmark is offline; you supply the provider-reported usage samples.
 ## Usage ledger
 
 ```python
+UsageLedger(path: Optional[str] = None)
+ledger.record_reconciliation(reconciliation, *, tags=None, generation_id=None, timestamp=None)
+ledger.summary(*, since=None)
+ledger.list_records(*, since=None, limit=None)
+```
+
+```python
 from pytokencalc import UsageLedger, reconcile
 
 ledger = UsageLedger("usage.jsonl")
@@ -315,7 +402,8 @@ pytokencalc usage list --ledger usage.jsonl --limit 10
 ```
 
 The ledger is append-only JSONL. It is optional; nothing is written unless you
-construct a `UsageLedger` and call `record_reconciliation()`/`append()`.
+construct a `UsageLedger` and call `record_reconciliation()`/`append()`. With
+no path it defaults to `~/.pytokencalc/usage.jsonl`.
 
 ## Pricing overrides
 
@@ -323,6 +411,21 @@ construct a `UsageLedger` and call `record_reconciliation()`/`append()`.
 table by default; pass `replace=True` to replace it. Accepts `YYYY-MM` or
 `YYYY-MM-DD` for `last_updated`, and unparseable dates are reported as stale
 instead of being silently treated as current.
+
+```json
+{
+  "last_updated": "2026-10-19",
+  "models": {
+    "my-private-model": {
+      "input_per_million": 1.25,
+      "output_per_million": 10.0,
+      "cache_read_per_million": 0.125,
+      "cache_write_per_million": 1.25,
+      "request_fee_usd": 0.001
+    }
+  }
+}
+```
 
 ## REST server (optional, `pip install "pytokencalc[server]"`)
 
