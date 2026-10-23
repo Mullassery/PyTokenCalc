@@ -104,8 +104,77 @@ class TestMainDispatch:
         assert payload["provider"] == "openai"
 
 
+    def test_catalog_prints_models(self, monkeypatch, capsys):
+        self._run(monkeypatch, ["pytokencalc", "catalog", "openai"])
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["count"] > 0
+        assert all(model["provider"] == "openai" for model in payload["models"])
+
+    def test_model_info_prints_metadata(self, monkeypatch, capsys):
+        self._run(monkeypatch, ["pytokencalc", "model-info", "gpt-4o"])
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["id"] == "gpt-4o"
+        assert payload["context_length"] == 128_000
+
+    def test_preflight_command(self, monkeypatch, capsys, tmp_path):
+        request = tmp_path / "request.json"
+        request.write_text(
+            '{"messages": [{"role": "user", "content": "Hello world"}]}',
+            encoding="utf-8",
+        )
+        self._run(
+            monkeypatch,
+            [
+                "pytokencalc",
+                "preflight",
+                "--file",
+                str(request),
+                "--model",
+                "gpt-4o",
+                "--max-output",
+                "100",
+            ],
+        )
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["input_tokens"] > 0
+        assert payload["fits"] is True
+
+    def test_reconcile_command(self, monkeypatch, capsys, tmp_path):
+        response = tmp_path / "response.json"
+        response.write_text(
+            '{"usage": {"prompt_tokens": 100, "completion_tokens": 20}}',
+            encoding="utf-8",
+        )
+        self._run(
+            monkeypatch,
+            [
+                "pytokencalc",
+                "reconcile",
+                "--file",
+                str(response),
+                "--model",
+                "gpt-4o",
+                "--expected-cost",
+                "0.001",
+            ],
+        )
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["usage"]["input_tokens"] == 100
+        assert payload["delta_usd"] is not None
+
+
 def test_print_help_contains_commands(capsys):
     print_help()
     out = capsys.readouterr().out
-    for command in ("count", "count-vision", "providers", "models", "help"):
+    for command in (
+        "count",
+        "count-vision",
+        "providers",
+        "models",
+        "catalog",
+        "model-info",
+        "preflight",
+        "reconcile",
+        "help",
+    ):
         assert command in out

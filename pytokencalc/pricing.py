@@ -2,7 +2,8 @@
 
 This is the pricing data behind the top-level ``pytokencalc.estimate_cost()``
 function. Prices are USD **per 1,000,000 tokens**, split by input vs. output,
-taken from each provider's publicly published pricing pages.
+with optional cache-read/cache-write and per-request fees, taken from each
+provider's publicly published pricing pages.
 
 IMPORTANT: LLM provider pricing changes frequently and without notice. This
 table is a static snapshot, not a live feed (PyTokenCalc deliberately does
@@ -20,7 +21,11 @@ To update: edit PRICING_TABLE below and bump PRICING_LAST_UPDATED.
 """
 
 import json
+import math
+import re
+from dataclasses import dataclass
 from datetime import date, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, NamedTuple, Optional
 
@@ -42,16 +47,199 @@ PRICING_MAX_AGE_DAYS = 90
 
 
 class ModelPricing(NamedTuple):
-    """USD price per 1,000,000 tokens."""
+    """USD price per 1,000,000 tokens.
+
+    ``cache_read_per_million`` and ``cache_write_per_million`` are optional.
+    When absent, cache tokens are billed at the normal input rate. The old
+    two-argument form remains valid, so existing tables/overrides keep working.
+    """
 
     input_per_million: float
     output_per_million: float
+    cache_read_per_million: Optional[float] = None
+    cache_write_per_million: Optional[float] = None
+    request_fee_usd: float = 0.0
 
 
-# Keys are matched case-insensitively, first as an exact match, then as the
-# longest registered prefix of the requested model string. This keeps the
-# table usable for dated/versioned model IDs (e.g. "gpt-4o-2024-11-20")
-# without needing an entry for every snapshot release.
+@dataclass(frozen=True)
+class Usage:
+    """Token usage for one or more requests.
+
+    ``input_tokens`` is the total prompt-token count, including cached and
+    cache-write tokens. ``cached_input_tokens`` and ``cache_write_tokens`` are
+    subsets of it. ``reasoning_tokens`` is informational and normally included
+    in ``output_tokens``; it is not billed twice.
+    """
+
+    input_tokens: int
+    output_tokens: int = 0
+    cached_input_tokens: int = 0
+    cache_write_tokens: int = 0
+    reasoning_tokens: int = 0
+    request_count: int = 1
+    provider_reported_cost_usd: Optional[float] = None
+
+    def __post_init__(self) -> None:
+        for name in (
+            "input_tokens",
+            "output_tokens",
+            "cached_input_tokens",
+            "cache_write_tokens",
+            "reasoning_tokens",
+            "request_count",
+        ):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise ValueError(f"{name} must be a non-negative integer")
+        if self.cached_input_tokens + self.cache_write_tokens > self.input_tokens:
+            raise ValueError(
+                "cached_input_tokens + cache_write_tokens cannot exceed input_tokens"
+            )
+        if self.provider_reported_cost_usd is not None and (
+            not math.isfinite(self.provider_reported_cost_usd)
+            or self.provider_reported_cost_usd < 0
+        ):
+            raise ValueError(
+                "provider_reported_cost_usd must be finite and non-negative"
+            )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "input_tokens": self.input_tokens,
+            "output_tokens": self.output_tokens,
+            "cached_input_tokens": self.cached_input_tokens,
+            "cache_write_tokens": self.cache_write_tokens,
+            "reasoning_tokens": self.reasoning_tokens,
+            "request_count": self.request_count,
+            "provider_reported_cost_usd": self.provider_reported_cost_usd,
+        }
+
+
+def _per_token_cost(tokens: int, rate_per_million: float) -> Decimal:
+    return (Decimal(tokens) * Decimal(str(rate_per_million))) / Decimal(1_000_000)
+
+
+@dataclass(frozen=True)
+class CostBreakdown:
+    """Line-item USD cost for a :class:`Usage`."""
+
+    model: str
+    resolved_model: str
+    usage: Usage
+    input_rate_per_million: float
+    output_rate_per_million: float
+    cache_read_rate_per_million: float
+    cache_write_rate_per_million: float
+    request_fee_usd: float
+    input_cost_usd: float
+    cache_read_cost_usd: float
+    cache_write_cost_usd: float
+    output_cost_usd: float
+    request_cost_usd: float
+    cache_savings_usd: float
+
+    @property
+    def total_usd(self) -> float:
+        return (
+            self.input_cost_usd
+            + self.cache_read_cost_usd
+            + self.cache_write_cost_usd
+            + self.output_cost_usd
+            + self.request_cost_usd
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "model": self.model,
+            "resolved_model": self.resolved_model,
+            "usage": self.usage.to_dict(),
+            "rates_per_million": {
+                "input": self.input_rate_per_million,
+                "output": self.output_rate_per_million,
+                "cache_read": self.cache_read_rate_per_million,
+                "cache_write": self.cache_write_rate_per_million,
+                "request_fee_usd": self.request_fee_usd,
+            },
+            "costs_usd": {
+                "input": self.input_cost_usd,
+                "cache_read": self.cache_read_cost_usd,
+                "cache_write": self.cache_write_cost_usd,
+                "output": self.output_cost_usd,
+                "request": self.request_cost_usd,
+                "total": self.total_usd,
+                "cache_savings": self.cache_savings_usd,
+            },
+        }
+
+
+def estimate_usage(
+    model: str,
+    usage: Usage,
+    provider: Optional[str] = None,
+) -> CostBreakdown:
+    """Return a line-item cost estimate for *usage*.
+
+    ``provider`` is accepted for API symmetry with reconciliation/preflight;
+    provider-specific prices can be supplied through pricing overrides today.
+    """
+    del provider  # reserved for endpoint-level pricing
+    pricing = get_model_pricing(model)
+    resolved_model = resolve_model_pricing_key(model) or model
+    if pricing is None:
+        raise ValueError(
+            f"No pricing data for model '{model}'. "
+            f"Known models: {sorted(PRICING_TABLE)}. "
+            f"Pricing table last updated: {PRICING_LAST_UPDATED}."
+        )
+
+    cache_read_rate = (
+        pricing.cache_read_per_million
+        if pricing.cache_read_per_million is not None
+        else pricing.input_per_million
+    )
+    cache_write_rate = (
+        pricing.cache_write_per_million
+        if pricing.cache_write_per_million is not None
+        else pricing.input_per_million
+    )
+
+    uncached_input = (
+        usage.input_tokens
+        - usage.cached_input_tokens
+        - usage.cache_write_tokens
+    )
+    input_cost = _per_token_cost(uncached_input, pricing.input_per_million)
+    cache_read_cost = _per_token_cost(usage.cached_input_tokens, cache_read_rate)
+    cache_write_cost = _per_token_cost(usage.cache_write_tokens, cache_write_rate)
+    output_cost = _per_token_cost(usage.output_tokens, pricing.output_per_million)
+    request_cost = Decimal(str(pricing.request_fee_usd)) * Decimal(usage.request_count)
+    cache_savings = (
+        _per_token_cost(usage.cached_input_tokens, pricing.input_per_million)
+        - cache_read_cost
+    )
+
+    return CostBreakdown(
+        model=model,
+        resolved_model=resolved_model,
+        usage=usage,
+        input_rate_per_million=pricing.input_per_million,
+        output_rate_per_million=pricing.output_per_million,
+        cache_read_rate_per_million=cache_read_rate,
+        cache_write_rate_per_million=cache_write_rate,
+        request_fee_usd=pricing.request_fee_usd,
+        input_cost_usd=float(input_cost),
+        cache_read_cost_usd=float(cache_read_cost),
+        cache_write_cost_usd=float(cache_write_cost),
+        output_cost_usd=float(output_cost),
+        request_cost_usd=float(request_cost),
+        cache_savings_usd=float(cache_savings),
+    )
+
+
+# Keys are matched case-insensitively, first as an exact match, then against
+# a known snapshot/version suffix (e.g. "gpt-4o-2024-11-20" -> "gpt-4o").
+# Genuinely different variants (e.g. "gpt-4.1" or "gpt-4o-audio-preview")
+# intentionally do not inherit a base model's price.
 PRICING_TABLE: Dict[str, ModelPricing] = {
     # --- OpenAI ---------------------------------------------------------
     "gpt-4o-mini": ModelPricing(0.15, 0.60),
@@ -86,28 +274,64 @@ PRICING_TABLE: Dict[str, ModelPricing] = {
     "command": ModelPricing(1.00, 2.00),
 }
 
+# Snapshot of the built-in table so overrides can merge safely.
+_BUILTIN_PRICING_TABLE = dict(PRICING_TABLE)
 
-def get_model_pricing(model: str) -> Optional[ModelPricing]:
-    """Look up pricing for a model, tolerating dated/versioned suffixes.
+# Only snapshot/version suffixes may inherit a base model's price. This
+# deliberately rejects genuinely different variants such as "gpt-4.1"
+# (a different model from "gpt-4"), "gpt-4o-audio-preview", or
+# "gemini-1.5-flash-8b".
+_VERSION_SUFFIX_RE = re.compile(
+    r"-(?:\d{4}-\d{2}-\d{2}|\d{8}|\d{4}-preview|\d{2}-\d{4}|"
+    r"\d{4}|\d{3}|latest|preview|v\d+(?:\.\d+)*)$"
+)
 
-    Returns None if no pricing entry matches.
+
+def _model_id_variants(model: str) -> list[str]:
+    """Yield normalized IDs to try, including a provider-prefixed variant."""
+    model_lower = model.strip().lower()
+    variants = [model_lower]
+    if "/" in model_lower:
+        suffix = model_lower.rsplit("/", 1)[1]
+        if suffix and suffix not in variants:
+            variants.append(suffix)
+    return variants
+
+
+def resolve_model_pricing_key(model: str) -> Optional[str]:
+    """Return the PRICING_TABLE key for *model*, or None if no safe match.
+
+    Exact IDs win. A model may inherit a base ID's price only when the
+    remainder is a known snapshot/version suffix (e.g.
+    "gpt-4o-2024-11-20" -> "gpt-4o"). Provider prefixes such as
+    "openai/gpt-4o" are also accepted.
     """
     if not model:
         return None
 
-    model_lower = model.lower()
+    table = PRICING_TABLE
+    for candidate in _model_id_variants(model):
+        if candidate in table:
+            return candidate
 
-    if model_lower in PRICING_TABLE:
-        return PRICING_TABLE[model_lower]
+        # Longest base key first, so gpt-4o-mini wins over gpt-4o.
+        for key in sorted(table, key=len, reverse=True):
+            if not candidate.startswith(key):
+                continue
+            suffix = candidate[len(key):]
+            if _VERSION_SUFFIX_RE.fullmatch(suffix):
+                return key
 
-    # Longest-prefix match so e.g. "gpt-4o-2024-11-20" resolves to "gpt-4o"
-    # and "gpt-4o-mini-2024-07-18" resolves to "gpt-4o-mini" (not "gpt-4o").
-    candidates = [key for key in PRICING_TABLE if model_lower.startswith(key)]
-    if not candidates:
-        return None
+    return None
 
-    best_match = max(candidates, key=len)
-    return PRICING_TABLE[best_match]
+
+def get_model_pricing(model: str) -> Optional[ModelPricing]:
+    """Look up pricing for a model, tolerating dated/versioned suffixes.
+
+    Returns None if no pricing entry matches safely.
+    """
+    key = resolve_model_pricing_key(model)
+    return PRICING_TABLE[key] if key is not None else None
 
 
 def estimate_cost(model: str, input_tokens: int, output_tokens: int = 0) -> float:
@@ -123,54 +347,70 @@ def estimate_cost(model: str, input_tokens: int, output_tokens: int = 0) -> floa
         Estimated cost in USD.
 
     Raises:
-        ValueError: If there is no pricing data for the model.
+        ValueError: If there is no pricing data for the model, or if token
+            counts are negative.
     """
-    pricing = get_model_pricing(model)
-    if pricing is None:
-        raise ValueError(
-            f"No pricing data for model '{model}'. "
-            f"Known models: {sorted(PRICING_TABLE)}. "
-            f"Pricing table last updated: {PRICING_LAST_UPDATED}."
-        )
-
-    cost = (
-        input_tokens * pricing.input_per_million
-        + output_tokens * pricing.output_per_million
-    ) / 1_000_000
-    return cost
+    usage = Usage(input_tokens=input_tokens, output_tokens=output_tokens)
+    return estimate_usage(model, usage).total_usd
 
 
 def pricing_status(now: Optional[date] = None) -> Dict[str, Any]:
     """Report the pricing snapshot's age and whether it should be refreshed.
 
-    ``PRICING_LAST_UPDATED`` is a ``YYYY-MM`` marker, so age is measured from
-    the first day of that month. This is a warning signal, not a hard failure:
+    ``PRICING_LAST_UPDATED`` is usually a ``YYYY-MM`` marker, but may also be
+    ``YYYY-MM-DD``. Age is measured from the first day of that month (or the
+    actual date if fully specified). This is a warning signal, not a hard failure:
     old prices are still usable for estimates, but should be verified.
     """
     today = now or date.today()
+    updated = None
     try:
-        updated = datetime.strptime(PRICING_LAST_UPDATED, "%Y-%m").date()
-    except ValueError:
-        updated = today
-    age_days = (today - updated).days
+        if len(PRICING_LAST_UPDATED) == 10:  # YYYY-MM-DD
+            updated = datetime.strptime(PRICING_LAST_UPDATED, "%Y-%m-%d").date()
+        elif len(PRICING_LAST_UPDATED) == 7:  # YYYY-MM
+            updated = datetime.strptime(
+                PRICING_LAST_UPDATED, "%Y-%m"
+            ).date().replace(day=1)
+        else:
+            # Try to parse as date
+            updated = datetime.strptime(PRICING_LAST_UPDATED[:10], "%Y-%m-%d").date()
+    except Exception:
+        updated = None
+    age_days = None if updated is None else (today - updated).days
     return {
         "last_updated": PRICING_LAST_UPDATED,
         "source": PRICING_SOURCE,
         "models": len(PRICING_TABLE),
         "age_days": age_days,
         "max_age_days": PRICING_MAX_AGE_DAYS,
-        "stale": age_days > PRICING_MAX_AGE_DAYS,
+        "stale": True if age_days is None else age_days > PRICING_MAX_AGE_DAYS,
+        "error": (
+            None
+            if updated is not None
+            else f"Unparseable PRICING_LAST_UPDATED: {PRICING_LAST_UPDATED!r}"
+        ),
     }
 
 
-def load_pricing_override(path: str) -> Dict[str, Any]:
-    """Replace the in-process pricing table from a JSON file.
+def load_pricing_override(
+    path: str,
+    replace: bool = False,
+    merge: Optional[bool] = None,
+) -> Dict[str, Any]:
+    """Load pricing from a JSON file.
+
+    By default this **merges** the override with built-in pricing, so adding
+    a private or newly released model does not erase all existing entries.
+    Pass ``replace=True`` to replace the table entirely.
 
     Expected shape::
 
         {"last_updated": "2026-10-19",
          "models": {"gpt-5": {"input_per_million": 1.25,
-                               "output_per_million": 10.0}}}
+                               "output_per_million": 10.0,
+                               "cache_read_per_million": 0.125,
+                               "cache_write_per_million": 1.25,
+                               "request_fee_usd": 0.0}}}
 
     The override is process-wide (the same table used by ``estimate_cost``)
     and intentionally explicit: there is no network fetch. Returns the same
@@ -201,11 +441,58 @@ def load_pricing_override(path: str) -> Dict[str, Any]:
             raise ValueError(
                 f"pricing for {model!r} requires numeric input_per_million and output_per_million"
             ) from exc
-        if input_price < 0 or output_price < 0:
-            raise ValueError(f"pricing for {model!r} must be non-negative")
-        parsed[model.lower()] = ModelPricing(input_price, output_price)
+        if (
+            not math.isfinite(input_price)
+            or not math.isfinite(output_price)
+            or input_price < 0
+            or output_price < 0
+        ):
+            raise ValueError(f"pricing for {model!r} must be finite and non-negative")
 
-    PRICING_TABLE = parsed
+        optional: Dict[str, Optional[float]] = {}
+        for field_name in ("cache_read_per_million", "cache_write_per_million"):
+            field_value = raw.get(field_name)
+            if field_value is None:
+                optional[field_name] = None
+                continue
+            try:
+                parsed_value = float(field_value)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    f"pricing for {model!r} has a non-numeric {field_name}"
+                ) from exc
+            if not math.isfinite(parsed_value) or parsed_value < 0:
+                raise ValueError(
+                    f"pricing for {model!r} requires a finite, non-negative {field_name}"
+                )
+            optional[field_name] = parsed_value
+
+        try:
+            request_fee = float(raw.get("request_fee_usd", 0.0))
+        except (TypeError, ValueError) as exc:
+            raise ValueError(
+                f"pricing for {model!r} has a non-numeric request_fee_usd"
+            ) from exc
+        if not math.isfinite(request_fee) or request_fee < 0:
+            raise ValueError(
+                f"pricing for {model!r} requires a finite, non-negative request_fee_usd"
+            )
+
+        parsed[model.lower()] = ModelPricing(
+            input_price,
+            output_price,
+            optional["cache_read_per_million"],
+            optional["cache_write_per_million"],
+            request_fee,
+        )
+
+    should_merge = (not replace) if merge is None else merge
+    if should_merge:
+        base = dict(_BUILTIN_PRICING_TABLE)
+        base.update(parsed)
+        PRICING_TABLE = base
+    else:
+        PRICING_TABLE = parsed
     PRICING_LAST_UPDATED = last_updated
     PRICING_SOURCE = path
     return pricing_status()

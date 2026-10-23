@@ -35,6 +35,7 @@ class ModelDiscovery:
     # Model naming patterns -> likely provider
     PROVIDER_PATTERNS = {
         r"^(gpt-|text-davinci|text-embedding)": "openai",
+        r"^(o1|o3|o4)": "openai",
         r"^claude-": "anthropic",
         r"^gemini-": "google",
         r"^command": "cohere",
@@ -176,7 +177,7 @@ class ModelDiscovery:
                 "Set ANTHROPIC_API_KEY environment variable",
             ],
             "google": [
-                "Google: Get API key from https://makersuite.google.com/app/apikey",
+                "Google: Get API key from https://aistudio.google.com/app/apikey",
                 "Set GOOGLE_API_KEY environment variable",
             ],
             "ollama": [

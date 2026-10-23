@@ -10,11 +10,15 @@ class TestModelPatternMatching:
 
     def test_openai_model_patterns(self):
         """Recognize OpenAI models by pattern"""
-        providers, message = ModelDiscovery.suggest_provider("gpt-4o")
-        assert "openai" in providers
+        for model in ("gpt-4o", "gpt-3.5-turbo", "gpt-5", "gpt-4.1"):
+            providers, message = ModelDiscovery.suggest_provider(model)
+            assert "openai" in providers
 
-        providers, message = ModelDiscovery.suggest_provider("gpt-3.5-turbo")
-        assert "openai" in providers
+    def test_openai_reasoning_model_patterns(self):
+        """Recognize OpenAI o-series reasoning models"""
+        for model in ("o1-preview", "o3-mini", "o4-mini"):
+            providers, message = ModelDiscovery.suggest_provider(model)
+            assert "openai" in providers
 
     def test_anthropic_model_patterns(self):
         """Recognize Anthropic Claude models"""

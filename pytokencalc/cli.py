@@ -17,8 +17,8 @@ class CLIInterface:
     """Command-line interface for PyTokenCalc workflow integration."""
 
     def __init__(self):
-        self.registry = TokenCounterRegistry()
         self.cache = TokenCounterCache()
+        self.registry = TokenCounterRegistry(cache=self.cache)
         self.sessions = {}
 
     def count_tokens(
@@ -148,10 +148,10 @@ class CLIInterface:
         stats = self.cache.get_stats()
         return {
             "status": "success",
-            "cached_counts": stats.get("cached_counts", 0),
-            "cache_hits": stats.get("cache_hits", 0),
-            "cache_misses": stats.get("cache_misses", 0),
-            "hit_rate": stats.get("hit_rate", 0.0),
+            "cached_counts": stats.get("size", 0),
+            "cache_hits": stats.get("hits", 0),
+            "cache_misses": stats.get("misses", 0),
+            "hit_rate": stats.get("hit_rate_percent", 0.0),
         }
 
     def clear_cache(self) -> dict:
@@ -204,6 +204,17 @@ def _required_option(options, key):
     if not value:
         raise ValueError(f"--{key.replace('_', '-')} is required")
     return value
+
+
+def _load_json_object(path):
+    """Load a JSON object (or array) from *path*."""
+    try:
+        raw = json.loads(path.read_text())
+    except FileNotFoundError as exc:
+        raise FileNotFoundError(f"JSON file not found: {path}") from exc
+    if not isinstance(raw, (dict, list)):
+        raise ValueError("JSON file must contain an object or array")
+    return raw
 
 
 def _load_json_samples(path):
@@ -420,6 +431,89 @@ def main():
                 status = load_pricing_override(sys.argv[index + 1])
             print(json.dumps(status))
 
+        elif command == "catalog":
+            from .catalog import list_models
+
+            provider = sys.argv[2] if len(sys.argv) > 2 else None
+            specs = list_models(provider)
+            print(
+                json.dumps(
+                    {
+                        "status": "success",
+                        "provider": provider,
+                        "models": [spec.to_dict() for spec in specs],
+                        "count": len(specs),
+                    }
+                )
+            )
+
+        elif command == "model-info":
+            from .catalog import get_model_spec
+
+            if len(sys.argv) < 3:
+                raise ValueError("model-info requires a model ID")
+            spec = get_model_spec(sys.argv[2])
+            if spec is None:
+                raise ValueError(f"Unknown model: {sys.argv[2]}")
+            print(json.dumps(spec.to_dict()))
+
+        elif command == "preflight":
+            from .preflight import preflight
+
+            options, positional = _parse_cli_options(
+                sys.argv[2:],
+                {"file", "model", "max_output", "provider"},
+            )
+            if positional:
+                raise ValueError("preflight takes options, not positional arguments")
+            source = _required_option(options, "file")
+            model = _required_option(options, "model")
+            payload = _load_json_object(Path(source))
+            if isinstance(payload, dict) and "messages" in payload:
+                messages = payload["messages"]
+                tools = payload.get("tools")
+                default_max = payload.get("max_output_tokens")
+            else:
+                messages = payload
+                tools = None
+                default_max = None
+            if "max_output" in options:
+                max_output = int(options["max_output"])
+            elif default_max is not None:
+                max_output = int(default_max)
+            else:
+                max_output = None
+            result = preflight(
+                messages,
+                model,
+                tools=tools,
+                max_output_tokens=max_output,
+                provider=options.get("provider"),
+            )
+            print(json.dumps(result.to_dict()))
+
+        elif command == "reconcile":
+            from .reconcile import reconcile
+
+            options, positional = _parse_cli_options(
+                sys.argv[2:],
+                {"file", "model", "provider", "expected_cost"},
+            )
+            if positional:
+                raise ValueError("reconcile takes options, not positional arguments")
+            source = _required_option(options, "file")
+            model = _required_option(options, "model")
+            expected = (
+                float(options["expected_cost"]) if "expected_cost" in options else None
+            )
+            result = reconcile(
+                model,
+                _load_json_object(Path(source)),
+                provider=options.get("provider"),
+                expected_cost_usd=expected,
+            )
+            print(json.dumps(result.to_dict()))
+
         elif command == "baseline":
             result = _handle_baseline_command(cli, sys.argv[2:])
             print(json.dumps(result))
@@ -466,8 +560,21 @@ COMMANDS:
             pytokencalc count-vision "Describe this" gpt-4-vision 3
 
     pricing [--file PATH]
-        Show pricing-snapshot age/staleness; optionally load a local JSON
+        Show pricing-snapshot age/staleness; optionally merge a local JSON
         override with {"last_updated": "YYYY-MM-DD", "models": {...}}
+
+    catalog [provider]
+        List model metadata: context window, modalities, tokenizer, pricing
+
+    model-info <model>
+        Show metadata and pricing for one model
+
+    preflight --file REQUEST.json --model MODEL [--max-output N] [--provider P]
+        Count a chat request before sending it and check context/cost fit.
+        REQUEST.json can be an array of messages or {"messages": [...], "tools": [...]}
+
+    reconcile --file RESPONSE.json --model MODEL [--provider P] [--expected-cost USD]
+        Compare provider-reported usage/cost with a prior estimate
 
     providers
         List all available token counter providers

@@ -28,9 +28,13 @@ itself fails (e.g. a network error for API-backed providers).
 
 Returns the estimated cost **in USD** for a request, using the static
 pricing table in [`pytokencalc/pricing.py`](../pytokencalc/pricing.py).
-Raises `ValueError` if the model isn't in the pricing table (see
-[MODELS.md](MODELS.md) for what's covered, and the module docstring for
+Raises `ValueError` if the model isn't safely resolvable to a pricing entry
+(see [MODELS.md](MODELS.md) for what's covered, and the module docstring for
 sources / update instructions).
+
+Matching is exact or snapshot/version-suffixed: `gpt-4o-2024-11-20` resolves
+to `gpt-4o`, but a genuinely different model such as `gpt-4.1` does **not**
+inherit `gpt-4` pricing. Provider-prefixed IDs (`openai/gpt-4o`) are accepted.
 
 ```python
 estimate_cost("gpt-4o", input_tokens=1000, output_tokens=250)
@@ -87,11 +91,14 @@ print(result.input_tokens, result.latency_ms, result.source)
 # Vision (text + image) token counting, where the provider supports it
 result = registry.count_vision("gpt-4-turbo", "Describe this image", num_images=1)
 
-# Batch counting
+# Batch counting (strict by default: failures raise)
 results = registry.count_batch([
     {"model": "gpt-4o", "text": "First prompt"},
     {"model": "gpt-4o", "text": "Second prompt"},
 ])
+
+# Opt into zero-token error placeholders instead of raising
+results = registry.count_batch(requests, strict=False)
 
 # Discover providers/models
 registry.list_providers()
@@ -106,12 +113,19 @@ registry.list_models("openai")    # just one provider
 `source` (`"local"` / `"api"` / `"formula"` / `"cache"`), `latency_ms`,
 `provider`, `model`, `platform`, `timestamp`, `session_id`.
 
+When a result comes from the in-memory cache, `cached` is `True` and the
+original `source`/`provider` metadata is preserved.
+
 ## CLI
 
 ```bash
 pytokencalc count "Hello world" gpt-4          # full CLI, JSON output
 pytokencalc providers
 pytokencalc models [provider]
+pytokencalc catalog [provider]                  # metadata + pricing
+pytokencalc model-info gpt-4o
+pytokencalc preflight --file request.json --model gpt-4o --max-output 500
+pytokencalc reconcile --file response.json --model gpt-4o --expected-cost 0.001
 pytokencalc cache-stats
 pytokencalc help
 
@@ -119,7 +133,98 @@ pycount "Hello world"                          # quick one-liner CLI
 pycount -m claude-3-sonnet -j "Hello world"    # JSON output
 ```
 
-## REST server (optional, requires `flask`)
+## Model catalog
+
+```python
+from pytokencalc import get_model_spec, list_models
+
+spec = get_model_spec("openai/gpt-4o")
+print(spec.context_length, spec.max_output_tokens, spec.input_modalities)
+print(spec.pricing.input_per_million)
+
+for model in list_models("anthropic"):
+    print(model.id, model.context_length)
+```
+
+The catalog is a reviewed built-in snapshot (not a live feed). `ModelSpec`
+carries canonical ID, aliases, provider, tokenizer family, context/output
+limits, modalities, and optional provider endpoints. Add custom metadata with
+`register_model_spec()`.
+
+## Usage-aware costs
+
+`Usage` separates total prompt tokens from cache reads/writes:
+
+```python
+from pytokencalc import Usage, estimate_usage
+
+usage = Usage(
+    input_tokens=1_000,
+    output_tokens=250,
+    cached_input_tokens=400,   # subset of input_tokens
+    cache_write_tokens=100,    # subset of input_tokens
+)
+breakdown = estimate_usage("gpt-4o", usage)
+print(breakdown.total_usd)
+print(breakdown.to_dict())
+```
+
+`cached_input_tokens` and `cache_write_tokens` are billed at the model's cache
+rates when configured, otherwise at the normal input rate. `reasoning_tokens`
+is informational and is normally included in `output_tokens`, so it is not
+billed twice. `Usage.request_count` applies any per-request fee.
+
+## Reconciliation
+
+```python
+from pytokencalc import reconcile
+
+result = reconcile(
+    "gpt-4o",
+    response,                       # full provider response or {"usage": ...}
+    provider="openrouter",
+    expected_cost_usd=0.001,
+)
+print(result.usage)
+print(result.cost.total_usd, result.delta_usd, result.delta_percent)
+print(result.provider_reported_cost_usd)
+```
+
+Supports OpenAI (`prompt_tokens` / `completion_tokens`), Anthropic
+(`input_tokens`, cache creation/read), OpenRouter (`usage.cost`,
+`cache_write_tokens`), and generic usage mappings.
+
+## Chat preflight
+
+```python
+from pytokencalc import preflight
+
+result = preflight(
+    [
+        {"role": "system", "content": "Be concise."},
+        {"role": "user", "content": "Explain vector databases."},
+    ],
+    "gpt-4o",
+    tools=[...],                    # optional tool schemas
+    max_output_tokens=500,
+)
+print(result.input_tokens, result.fits, result.estimated_cost_usd)
+print(result.warnings)
+```
+
+Text tokens use the real model tokenizer. Chat framing, tool-schema overhead,
+and image tokens are estimates; `warnings` says when image counting is not
+available for the selected provider. Context fit uses the catalog's context
+window (`None` when the model is unknown).
+
+## Pricing overrides
+
+`load_pricing_override(path)` merges `{last_updated, models}` into the built-in
+table by default; pass `replace=True` to replace it. Accepts `YYYY-MM` or
+`YYYY-MM-DD` for `last_updated`, and unparseable dates are reported as stale
+instead of being silently treated as current.
+
+## REST server (optional, `pip install "pytokencalc[server]"`)
 
 ```python
 from pytokencalc.server import run_server

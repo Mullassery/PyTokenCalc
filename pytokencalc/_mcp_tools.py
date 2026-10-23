@@ -32,21 +32,16 @@ from .pricing import (
     PRICING_LAST_UPDATED,
     PRICING_TABLE,
     get_model_pricing,
+    resolve_model_pricing_key,
 )
 
 _TIME_PERIOD_HOURS = {"last_24h": 24, "last_7d": 24 * 7, "last_30d": 24 * 30}
 
 
 def _resolved_pricing_key(model: str) -> Optional[str]:
-    """Return the PRICING_TABLE key a model resolves to (exact or longest
-    registered prefix), mirroring pricing.get_model_pricing's matching."""
-    if not model:
-        return None
-    model_lower = model.lower()
-    if model_lower in PRICING_TABLE:
-        return model_lower
-    candidates = [key for key in PRICING_TABLE if model_lower.startswith(key)]
-    return max(candidates, key=len) if candidates else None
+    """Return the PRICING_TABLE key a model resolves to, using the same
+    safe exact/snapshot-suffix matching as pricing.get_model_pricing."""
+    return resolve_model_pricing_key(model)
 
 
 class PyTokenCalcMCPTools:

@@ -9,7 +9,7 @@ To report a security issue, email **mullassery@gmail.com** with a
 description and, if possible, a minimal reproduction. Please do not open a
 public GitHub issue for anything that could be actively exploited before a
 fix ships (e.g. a way to leak an API key, execute arbitrary code, or bypass
-the auth defaults described below).
+the network-bind guard described below).
 
 There is currently no GPG key for encrypted reports and no published CVE
 process. If a report turns into a real fix, it will be credited in
@@ -35,14 +35,12 @@ This section is deliberately specific instead of generic reassurance:
   not by PyTokenCalc itself. PyTokenCalc does not log, cache, or persist
   these keys, but it also does not scrub them from tracebacks raised by
   the underlying SDKs.
-- **The MCP connector** (`pytokencalc._mcp_connector.TokenCalculator`,
-  exported at the top level) has a `require_auth = true` default in
-  `pytokencalc.toml` and a security comment in `_mcp_connector.py`
-  disclaiming wildcard CORS/RBAC by default. This code path is
-  **untested** (no test file covers it) and depends on an external `dab`
-  binary not bundled or pinned by this project. Do not treat its security
-  defaults as verified; treat the entire MCP subsystem as experimental.
-  See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detail.
+- **The MCP server has no authentication layer.** The FastMCP transport
+  binds to `127.0.0.1` by default. HTTP/SSE binds to a non-loopback host
+  are refused unless `PYTOKENCALC_MCP_ALLOW_UNAUTHENTICATED=1` is set;
+  only set that variable behind your own auth/network controls.
+  `pytokencalc.toml` is documentation only and is not currently loaded by
+  the server. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for detail.
 - **Local-inference / custom-provider / Ollama counters**
   (`tokenizers/ollama_counter.py`, `tokenizers/local_inference_counter.py`,
   `tokenizers/custom_provider_counter.py`) make outbound HTTP requests to

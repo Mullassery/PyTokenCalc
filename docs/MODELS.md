@@ -52,8 +52,9 @@ covering:
 - **Google:** gemini-1.5-pro, gemini-1.5-flash, gemini-2-flash, gemini-pro
 - **Cohere:** command-r-plus, command-r, command-light, command
 
-Model names with date suffixes (e.g. `gpt-4o-2024-11-20`) resolve via
-longest-prefix match. Pricing is a manually maintained snapshot -- see the
-module docstring for the last-updated date and provider pricing-page links,
-and verify current rates before relying on this for billing-critical
-decisions.
+Model names with date/snapshot suffixes (e.g. `gpt-4o-2024-11-20`) resolve
+to their base model. Genuinely different variants (e.g. `gpt-4.1` or
+`gemini-1.5-flash-8b`) intentionally do **not** inherit a base model's price.
+Pricing is a manually maintained snapshot -- see the module docstring for the
+last-updated date and provider pricing-page links, and verify current rates
+before relying on this for billing-critical decisions.

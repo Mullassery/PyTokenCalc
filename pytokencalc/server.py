@@ -19,8 +19,8 @@ class PyTokenCalcServer:
         """Initialize server."""
         self.host = host
         self.port = port
-        self.registry = TokenCounterRegistry()
         self.cache = TokenCounterCache()
+        self.registry = TokenCounterRegistry(cache=self.cache)
 
     def count_tokens(
         self, text: str, model: str, provider: Optional[str] = None
@@ -104,10 +104,10 @@ class PyTokenCalcServer:
         stats = self.cache.get_stats()
         return {
             "status": "success",
-            "cached_counts": stats.get("cached_counts", 0),
-            "cache_hits": stats.get("cache_hits", 0),
-            "cache_misses": stats.get("cache_misses", 0),
-            "hit_rate": stats.get("hit_rate", 0.0),
+            "cached_counts": stats.get("size", 0),
+            "cache_hits": stats.get("hits", 0),
+            "cache_misses": stats.get("misses", 0),
+            "hit_rate": stats.get("hit_rate_percent", 0.0),
         }
 
     def clear_cache(self) -> Dict[str, Any]:
@@ -131,7 +131,7 @@ def create_flask_app(server: Optional[PyTokenCalcServer] = None):
         from flask import Flask, jsonify, request
     except ImportError:
         raise ImportError(
-            "Flask is required for REST API. Install with: pip install flask"
+            'Flask is required for REST API. Install with: pip install "pytokencalc[server]"'
         ) from None
 
     app = Flask(__name__)

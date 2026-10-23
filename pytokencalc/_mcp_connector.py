@@ -71,6 +71,9 @@ class TokenCalculator:
         self, transport: str = "stdio", host: str = "127.0.0.1", port: int = 8778
     ) -> None:
         """Run the MCP server (blocking)."""
+        from .mcp_server import ensure_safe_bind
+
+        ensure_safe_bind(host, transport)
         server = self.create_mcp_server()
         if transport == "stdio":
             server.run(transport="stdio")

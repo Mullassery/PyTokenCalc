@@ -18,7 +18,9 @@ export_pricing_report = true
 estimate_total_cost = true
 
 [mcp.security]
-# Auth is required by default. Set to false only if you understand the
-# MCP server will be reachable without authentication, e.g. because you've
-# restricted network access some other way.
-require_auth = true
+# DEPRECATED / DOCUMENTATION ONLY. This file is not currently loaded by the
+# MCP server, and the server does not implement authentication.
+#
+# Safety default: bind to 127.0.0.1. Non-loopback HTTP/SSE binds are refused
+# unless PYTOKENCALC_MCP_ALLOW_UNAUTHENTICATED=1 is set, because there is no
+# built-in auth layer. See SECURITY.md.

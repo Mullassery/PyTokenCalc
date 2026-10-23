@@ -67,7 +67,8 @@ flowchart TD
      (`requests.get(..., timeout=1-2)`).
 4. Results are wrapped in a `TokenCountResult` (input/output/image/system/
    tool token counts, latency, cache status, provider/platform metadata)
-   and optionally cached by `TokenCounterCache`.
+   and cached by `TokenCounterCache` (keyed by provider/model/text; a cache
+   can be injected, otherwise each registry owns one).
 5. `estimate_cost()` is independent of all of the above: it looks up
    `model` in the static `PRICING_TABLE` in `pricing.py` and multiplies by
    token counts. It does not call any provider API.
@@ -77,7 +78,10 @@ flowchart TD
 ```
 pytokencalc/
 ├── api.py                    # count_tokens() / estimate_cost() top-level API
-├── pricing.py                 # static USD pricing table
+├── catalog.py                 # model metadata, aliases, context limits
+├── preflight.py               # chat/tool/image preflight
+├── reconcile.py               # provider usage normalization/reconciliation
+├── pricing.py                 # static USD pricing table + Usage/CostBreakdown
 ├── model_discovery.py         # pattern-based provider/model suggestions
 ├── cli.py, quick_cli.py       # `pytokencalc` and `pycount` entry points
 ├── server.py                  # optional Flask REST server

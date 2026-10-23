@@ -1,5 +1,5 @@
 """
-PyTokenCalc v1.2.1: Universal Token Counting for ANY LLM
+PyTokenCalc v1.4.2: Universal Token Counting for ANY LLM
 
 One library. One API. Every LLM provider. Custom models. BYOM support.
 
@@ -11,9 +11,13 @@ Features:
 - Model discovery (automatic provider suggestion)
 - Platform-aware token counting (handles variations across platforms)
 - Temporal variation tracking (session-based monitoring)
-- Forward-compatible (new models work without code updates)
-- 99%+ accuracy verified against official counters
-- Intelligent caching: 70-80% fewer API calls
+- Best-effort forward compatibility for new model IDs
+- Deterministic local tokenizers; provider-API counters where required
+- In-memory caching for repeated counts
+- Model catalog with context windows, modalities, and aliases
+- Usage-aware cost breakdowns (cache reads/writes + request fees)
+- Provider usage reconciliation for OpenAI, Anthropic, and OpenRouter
+- Chat/tool preflight for context fit and cost before sending
 - StatGuardian quality validation (v1.0.0+)
 
 Supported Providers:
@@ -25,7 +29,7 @@ Supported Providers:
 Token Counting + Workflow Automation:
 - Count tokens for any LLM (cloud, local, custom, BYOM)
 - Intelligent routing (local when fast, API when accurate)
-- Aggressive caching (70-80% fewer API calls)
+- In-memory caching for repeated counts
 - CLI + REST API for workflow automation (n8n, Power Automate, Temporal, Airflow)
 - No external services or persistence required
 - No configuration needed
@@ -41,13 +45,26 @@ __author__ = "Georgi Mammen Mullassery"
 
 # Top-level ergonomic API (v1.1.0+): count_tokens() -> int, estimate_cost() -> USD
 from .api import count_tokens, estimate_cost
+from .catalog import (
+    ModelSpec,
+    ProviderEndpoint,
+    get_model_spec,
+    list_models,
+    register_model_spec,
+)
+from .preflight import PreflightResult, preflight
 from .pricing import (
     PRICING_LAST_UPDATED,
     PRICING_TABLE,
+    CostBreakdown,
+    ModelPricing,
+    Usage,
+    estimate_usage,
     get_model_pricing,
     load_pricing_override,
     pricing_status,
 )
+from .reconcile import Reconciliation, parse_usage, reconcile
 
 # Token counting (v0.7+: Multi-provider token counter)
 try:
@@ -114,10 +131,24 @@ __all__ = [
     "count_tokens",
     "estimate_cost",
     "get_model_pricing",
+    "ModelPricing",
     "PRICING_TABLE",
     "PRICING_LAST_UPDATED",
     "load_pricing_override",
     "pricing_status",
+    "Usage",
+    "CostBreakdown",
+    "estimate_usage",
+    "ModelSpec",
+    "ProviderEndpoint",
+    "get_model_spec",
+    "list_models",
+    "register_model_spec",
+    "Reconciliation",
+    "parse_usage",
+    "reconcile",
+    "PreflightResult",
+    "preflight",
     # Token counting interface
     "TokenCounter",
     "TokenCountResult",

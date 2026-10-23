@@ -18,7 +18,9 @@ Python:
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import logging
+import os
 from typing import Any, Optional
 
 from pytokencalc._mcp_tools import PyTokenCalcMCPHandler, PyTokenCalcMCPTools
@@ -28,6 +30,32 @@ logger = logging.getLogger(__name__)
 
 class MCPUnavailable(RuntimeError):
     """Raised when FastMCP is not installed."""
+
+
+def _is_loopback(host: str) -> bool:
+    if host in {"localhost", "127.0.0.1", "::1"}:
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def ensure_safe_bind(host: str, transport: str = "http") -> None:
+    """Refuse an unauthenticated non-loopback HTTP/SSE bind by default.
+
+    The MCP server has no authentication layer. Binding it to a public
+    interface is a deliberate, explicit choice.
+    """
+    if transport == "stdio" or _is_loopback(host):
+        return
+    if os.environ.get("PYTOKENCALC_MCP_ALLOW_UNAUTHENTICATED") == "1":
+        return
+    raise ValueError(
+        f"Refusing to bind unauthenticated MCP transport to non-loopback host "
+        f"{host!r}. Set PYTOKENCALC_MCP_ALLOW_UNAUTHENTICATED=1 only if you "
+        f"have put authentication/network controls in front of it."
+    )
 
 
 def _require_fastmcp():
@@ -141,6 +169,11 @@ def main(argv: Optional[list[str]] = None) -> None:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8778)
     args = parser.parse_args(argv)
+
+    try:
+        ensure_safe_bind(args.host, args.transport)
+    except ValueError as exc:
+        parser.error(str(exc))
 
     server = create_server()
     if args.transport == "stdio":

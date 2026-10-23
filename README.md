@@ -24,11 +24,20 @@ from compiled code in PyTokenCalc itself. It installs and imports as `pytokencal
   models, the HuggingFace `transformers` tokenizer, and live count-tokens endpoints for
   Anthropic/Google/Cohere.
 - **Pricing freshness** — `pricing_status()` reports the snapshot's age and
-  flags it stale after 90 days; `load_pricing_override(path)` loads a local
-  JSON pricing file for newer/private models. `pytokencalc pricing` exposes it.
+  flags it stale after 90 days; `load_pricing_override(path)` merges a local
+  JSON pricing file into the built-in table for newer/private models (use
+  `replace=True` to replace it). `pytokencalc pricing` exposes it.
 - **Real cost estimation** — `estimate_cost()` is backed by a per-model USD pricing table
   (input vs. output rates), not a guess; see
   [`pytokencalc/pricing.py`](pytokencalc/pricing.py) for sources and last-updated date.
+- **Model catalog** — `get_model_spec()` / `list_models()` expose context windows,
+  output limits, tokenizer families, modalities, aliases, and provider-prefixed IDs.
+- **Usage-aware costing** — `estimate_usage()` handles cache reads/writes, request
+  fees, and line-item cost breakdowns; the legacy `estimate_cost()` API still works.
+- **Reconciliation** — `reconcile(response)` normalizes OpenAI, Anthropic, and
+  OpenRouter usage metadata and compares actual cost with your preflight estimate.
+- **Chat preflight** — `preflight(messages, tools=..., max_output_tokens=...)`
+  estimates prompt tokens, context fit, and cost before sending a request.
 - **Fast local counting** — sub-millisecond for local (tiktoken/HuggingFace) providers on
   typical hardware.
 - **Batch processing** — count tokens for many prompts in one call.
@@ -66,10 +75,14 @@ from compiled code in PyTokenCalc itself. It installs and imports as `pytokencal
   those paths need the relevant package installed and an API key set.
 - **Provider coverage is a maintained table, not exhaustive.** See
   [`docs/MODELS.md`](docs/MODELS.md) for exactly which models are covered.
+- **Catalog and preflight metadata are snapshots, not live truth.** Context
+  windows, aliases, and pricing can drift. Chat framing, tool-schema overhead,
+  and image tokens are estimates; use `reconcile(response)` against provider
+  usage to measure the difference on your own workload.
 
 ## Project status
 
-**Beta.** Current version **1.4.1** (`Development Status :: 5 - Production/Stable` in
+**Beta.** Current version **1.4.2** (`Development Status :: 4 - Beta` in
 `pyproject.toml`). The local OpenAI/HuggingFace counting path is well covered by tests;
 provider-specific paths require their optional dependencies. See
 [`ROADMAP_HONEST.md`](ROADMAP_HONEST.md) for the full honest status and technical-debt
@@ -109,6 +122,10 @@ uv pip install pytokencalc
 
 # with local tokenizer support (tiktoken + HuggingFace transformers)
 pip install "pytokencalc[tokenizers]"
+
+# optional HTTP surfaces
+pip install "pytokencalc[server]"   # Flask REST API
+pip install "pytokencalc[mcp]"      # FastMCP transport
 ```
 
 Requires Python 3.9+.

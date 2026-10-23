@@ -54,6 +54,28 @@ class TestGetModelPricing:
     def test_unknown_model_returns_none(self):
         assert get_model_pricing("totally-made-up-model") is None
 
+    def test_newer_model_families_do_not_inherit_old_prices(self):
+        # gpt-4.1 is a different model from gpt-4, not a dated snapshot.
+        assert get_model_pricing("gpt-4.1") is None
+        assert get_model_pricing("gpt-4.1-mini") is None
+        assert get_model_pricing("gpt-5") is None
+        assert get_model_pricing("o3-mini") is None
+
+    def test_different_variants_do_not_inherit_base_price(self):
+        assert get_model_pricing("gemini-1.5-flash-8b") is None
+        assert get_model_pricing("command-r7b") is None
+        assert get_model_pricing("gpt-4o-audio-preview") is None
+
+    def test_known_version_suffixes_still_resolve(self):
+        assert get_model_pricing("gpt-4-0613") == ModelPricing(30.00, 60.00)
+        assert get_model_pricing("claude-3-5-sonnet-20241022") == ModelPricing(3.00, 15.00)
+        assert get_model_pricing("gemini-1.5-pro-002") == ModelPricing(1.25, 5.00)
+        assert get_model_pricing("gpt-4-turbo-preview") == ModelPricing(10.00, 30.00)
+
+    def test_provider_prefixed_ids_resolve(self):
+        assert get_model_pricing("openai/gpt-4o") == ModelPricing(2.50, 10.00)
+        assert get_model_pricing("openrouter/openai/gpt-4o") == ModelPricing(2.50, 10.00)
+
     def test_empty_or_missing_returns_none(self):
         assert get_model_pricing("") is None
         assert get_model_pricing(None) is None
@@ -71,6 +93,12 @@ class TestEstimateCostDollars:
     def test_zero_tokens_is_zero(self):
         assert estimate_cost("gpt-4o", 0, 0) == 0.0
 
+    def test_negative_token_counts_are_rejected(self):
+        with pytest.raises(ValueError, match="non-negative"):
+            estimate_cost("gpt-4o", -1)
+        with pytest.raises(ValueError, match="non-negative"):
+            estimate_cost("gpt-4o", 1, -1)
+
     def test_dated_model_is_counted(self):
         assert estimate_cost("gpt-4o-2024-11-20", 1_000_000) == pytest.approx(2.50)
 
@@ -80,6 +108,10 @@ class TestEstimateCostDollars:
         msg = str(excinfo.value)
         assert "no-such-model" in msg
         assert PRICING_LAST_UPDATED in msg
+
+    def test_newer_model_is_not_mispriced_as_older_model(self):
+        with pytest.raises(ValueError, match="gpt-4.1"):
+            estimate_cost("gpt-4.1", 1_000_000, 1_000_000)
 
 
 class TestTopLevelApi:
@@ -164,7 +196,16 @@ class TestPricingStatusAndOverride:
         assert status["models"] == len(PRICING_TABLE)
         assert status["stale"] is False
 
-    def test_override_replaces_table_and_source(self, tmp_path):
+    def test_unparseable_date_is_marked_stale(self, monkeypatch):
+        from pytokencalc import pricing
+
+        monkeypatch.setattr(pricing, "PRICING_LAST_UPDATED", "not-a-date")
+        status = pricing.pricing_status()
+        assert status["age_days"] is None
+        assert status["stale"] is True
+        assert status["error"]
+
+    def test_override_loads_model_and_source(self, tmp_path):
         from pytokencalc import pricing
 
         original_table = dict(pricing.PRICING_TABLE)
@@ -194,3 +235,88 @@ class TestPricingStatusAndOverride:
         path.write_text('{"last_updated": "2026-10-19"}', encoding="utf-8")
         with pytest.raises(ValueError, match="models"):
             pricing.load_pricing_override(str(path))
+
+    def test_override_rejects_non_finite_prices(self, tmp_path):
+        from pytokencalc import pricing
+
+        path = tmp_path / "bad.json"
+        path.write_text(
+            '{"last_updated": "2026-10-19",'
+            ' "models": {"bad": {"input_per_million": 1e999,'
+            ' "output_per_million": 1.0}}}',
+            encoding="utf-8",
+        )
+        with pytest.raises(ValueError, match="finite"):
+            pricing.load_pricing_override(str(path))
+
+    def test_override_merges_with_builtins_by_default(self, tmp_path):
+        from pytokencalc import pricing
+
+        original_table = dict(pricing.PRICING_TABLE)
+        original_updated = pricing.PRICING_LAST_UPDATED
+        original_source = pricing.PRICING_SOURCE
+        try:
+            path = tmp_path / "pricing.json"
+            path.write_text(
+                '{"last_updated": "2026-10-19",'
+                ' "models": {"private-model": {"input_per_million": 1.25,'
+                ' "output_per_million": 10.0}}}',
+                encoding="utf-8",
+            )
+            status = pricing.load_pricing_override(str(path))
+            assert status["source"] == str(path)
+            assert pricing.get_model_pricing("private-model") == ModelPricing(1.25, 10.0)
+            # Built-ins must remain available after a merge.
+            assert pricing.get_model_pricing("gpt-4o") == ModelPricing(2.50, 10.00)
+        finally:
+            pricing.PRICING_TABLE = original_table
+            pricing.PRICING_LAST_UPDATED = original_updated
+            pricing.PRICING_SOURCE = original_source
+
+    def test_override_can_still_replace_table(self, tmp_path):
+        from pytokencalc import pricing
+
+        original_table = dict(pricing.PRICING_TABLE)
+        original_updated = pricing.PRICING_LAST_UPDATED
+        original_source = pricing.PRICING_SOURCE
+        try:
+            path = tmp_path / "pricing.json"
+            path.write_text(
+                '{"last_updated": "2026-10-19",'
+                ' "models": {"private-model": {"input_per_million": 1.25,'
+                ' "output_per_million": 10.0}}}',
+                encoding="utf-8",
+            )
+            pricing.load_pricing_override(str(path), replace=True)
+            assert pricing.get_model_pricing("private-model") is not None
+            assert pricing.get_model_pricing("gpt-4o") is None
+        finally:
+            pricing.PRICING_TABLE = original_table
+            pricing.PRICING_LAST_UPDATED = original_updated
+            pricing.PRICING_SOURCE = original_source
+
+    def test_override_full_date_is_parsed_for_staleness(self, tmp_path):
+        from datetime import date
+
+        from pytokencalc import pricing
+
+        original_table = dict(pricing.PRICING_TABLE)
+        original_updated = pricing.PRICING_LAST_UPDATED
+        original_source = pricing.PRICING_SOURCE
+        try:
+            path = tmp_path / "pricing.json"
+            path.write_text(
+                '{"last_updated": "2025-01-01",'
+                ' "models": {"private-model": {"input_per_million": 1.25,'
+                ' "output_per_million": 10.0}}}',
+                encoding="utf-8",
+            )
+            status = pricing.load_pricing_override(str(path))
+            assert status["age_days"] is not None
+            assert status["age_days"] > 90
+            assert status["stale"] is True
+            assert pricing.pricing_status(now=date(2025, 1, 2))["age_days"] == 1
+        finally:
+            pricing.PRICING_TABLE = original_table
+            pricing.PRICING_LAST_UPDATED = original_updated
+            pricing.PRICING_SOURCE = original_source

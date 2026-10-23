@@ -25,7 +25,10 @@ providers.
 
 from unittest.mock import patch
 
+import pytest
+
 from pytokencalc.tokenizers.base import TokenCounter, TokenCountResult
+from pytokencalc.tokenizers.cache import TokenCounterCache
 from pytokencalc.tokenizers.registry import TokenCounterRegistry
 
 
@@ -112,3 +115,59 @@ def test_registry_still_registers_unaffected_real_counters():
     # fail to register when their optional dependency truly isn't
     # installed, which is independent of the OpenAI failure simulated here.
     assert len(registry.counters) >= 1
+
+
+def test_batch_defaults_to_strict_and_does_not_hide_errors():
+    registry = TokenCounterRegistry(cache=TokenCounterCache())
+    registry.counters = {"fake": _FakeWorkingCounter()}
+
+    with pytest.raises(ValueError, match="Unknown provider"):
+        registry.count_batch(
+            [{"model": "fake-model", "text": "hello", "provider": "missing"}]
+        )
+
+    results = registry.count_batch(
+        [{"model": "fake-model", "text": "hello", "provider": "missing"}],
+        strict=False,
+    )
+    assert results[0].input_tokens == 0
+    assert results[0].source == "error"
+
+
+def test_cache_preserves_source_and_provider_metadata():
+    cache = TokenCounterCache()
+    registry = TokenCounterRegistry(cache=cache)
+    registry.counters = {"fake": _FakeWorkingCounter()}
+
+    first = registry.count_tokens("fake-model", "hello world", provider="fake")
+    second = registry.count_tokens("fake-model", "hello world", provider="fake")
+
+    assert first.cached is False
+    assert second.cached is True
+    assert second.input_tokens == first.input_tokens
+    assert second.source == first.source == "local"
+    assert second.provider == first.provider == "fake"
+    assert second.latency_ms >= 0
+
+
+def test_cache_is_scoped_by_provider():
+    cache = TokenCounterCache()
+    cache.set("same-model", "same text", 1, provider="provider-a")
+    assert cache.get("same-model", "same text", provider="provider-a") == 1
+    assert cache.get("same-model", "same text", provider="provider-b") is None
+
+
+def test_new_openai_families_route_to_openai():
+    registry = TokenCounterRegistry(cache=TokenCounterCache())
+    sentinel = object()
+    registry.get_counter = lambda provider: sentinel if provider == "openai" else None
+
+    for model in (
+        "gpt-5",
+        "gpt-4.1",
+        "o1-preview",
+        "o3-mini",
+        "openai/o3-mini",
+        "openai/gpt-5",
+    ):
+        assert registry._auto_detect_counter(model) is sentinel

@@ -7,6 +7,44 @@ All notable changes to PyTokenCalc are documented in this file.
 ### Changed
 - Declare Python 3.13 support via the `Programming Language :: Python :: 3.13`
   classifier and add 3.13 to the CI test matrix.
+- Align project metadata with the README's beta status and remove the
+  unsupported "99%+ accuracy" packaging claim.
+- `pytokencalc[server]` is now a real optional extra for the Flask REST API.
+
+### Added
+- `pytokencalc.catalog`: `ModelSpec`, `ProviderEndpoint`, `get_model_spec()`,
+  `list_models()`, and `register_model_spec()` with context windows, output
+  limits, tokenizer families, modalities, aliases, and provider-prefixed IDs.
+- `Usage`, `CostBreakdown`, and `estimate_usage()` for cache read/write
+  billing, per-request fees, line-item costs, and cache savings. Legacy
+  `estimate_cost(model, input, output)` remains unchanged.
+- `reconcile(response)`: normalizes OpenAI, Anthropic, OpenRouter, and generic
+  usage metadata, computes actual cost, and compares it with an expected
+  preflight cost/usage.
+- `preflight(messages, tools=..., max_output_tokens=...)`: token, context-fit,
+  and cost estimation before sending a chat request.
+- CLI: `catalog`, `model-info`, `preflight`, and `reconcile`.
+
+### Fixed
+- Pricing lookup no longer prefix-matches genuinely different model families:
+  `gpt-4.1` no longer silently inherits `gpt-4` pricing, and variants such as
+  `gemini-1.5-flash-8b`/`command-r7b` no longer inherit their base model's
+  price. Dated/snapshot suffixes still resolve, and provider-prefixed IDs
+  (`openai/gpt-4o`) are accepted.
+- `load_pricing_override()` now merges with built-in pricing by default;
+  `replace=True` preserves the old full-replacement behavior.
+- `pricing_status()` parses `YYYY-MM-DD` and marks unparseable dates stale
+  instead of silently reporting zero age.
+- The token cache is now actually wired into `TokenCounterRegistry`; cache
+  hits preserve the original `source`/`provider` metadata, are scoped by
+  provider, and the CLI/REST cache stats report real values.
+- `count_batch()` is strict by default and no longer hides failures as
+  zero-token results. Use `strict=False` for explicit error placeholders.
+- Newer OpenAI families (`gpt-5`, `gpt-4.1`, `o1`, `o3`, `o4`) route to the
+  OpenAI tokenizer instead of falling through to the open-source path.
+- MCP HTTP/SSE binds to non-loopback hosts are refused unless
+  `PYTOKENCALC_MCP_ALLOW_UNAUTHENTICATED=1` is set; `pytokencalc.toml` no
+  longer claims an unimplemented `require_auth` default.
 
 ## [1.4.0] - 2026-10-19
 
