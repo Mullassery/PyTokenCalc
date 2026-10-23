@@ -79,7 +79,8 @@ flowchart TD
 pytokencalc/
 ├── api.py                    # count_tokens() / estimate_cost() top-level API
 ├── catalog.py                 # model metadata, aliases, context limits
-├── openrouter.py              # offline OpenRouter model snapshot importer
+├── openrouter.py              # offline OpenRouter model/endpoint importers
+├── endpoints.py               # endpoint-level cost comparison
 ├── ledger.py                  # optional JSONL usage ledger
 ├── preflight.py               # chat/tool/image preflight
 ├── reconcile.py               # provider usage normalization/reconciliation

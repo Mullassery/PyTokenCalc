@@ -172,26 +172,15 @@ class CostBreakdown:
         }
 
 
-def estimate_usage(
+def cost_from_pricing(
     model: str,
+    pricing: ModelPricing,
     usage: Usage,
-    provider: Optional[str] = None,
+    *,
+    resolved_model: Optional[str] = None,
 ) -> CostBreakdown:
-    """Return a line-item cost estimate for *usage*.
-
-    ``provider`` is accepted for API symmetry with reconciliation/preflight;
-    provider-specific prices can be supplied through pricing overrides today.
-    """
-    del provider  # reserved for endpoint-level pricing
-    pricing = get_model_pricing(model)
-    resolved_model = resolve_model_pricing_key(model) or model
-    if pricing is None:
-        raise ValueError(
-            f"No pricing data for model '{model}'. "
-            f"Known models: {sorted(PRICING_TABLE)}. "
-            f"Pricing table last updated: {PRICING_LAST_UPDATED}."
-        )
-
+    """Build a line-item cost breakdown from an explicit pricing record."""
+    resolved_model = resolved_model or model
     cache_read_rate = (
         pricing.cache_read_per_million
         if pricing.cache_read_per_million is not None
@@ -233,6 +222,32 @@ def estimate_usage(
         output_cost_usd=float(output_cost),
         request_cost_usd=float(request_cost),
         cache_savings_usd=float(cache_savings),
+    )
+
+
+def estimate_usage(
+    model: str,
+    usage: Usage,
+    provider: Optional[str] = None,
+) -> CostBreakdown:
+    """Return a line-item cost estimate for *usage*.
+
+    ``provider`` is accepted for API symmetry with reconciliation/preflight;
+    provider-specific prices can be supplied through pricing overrides today.
+    """
+    del provider  # reserved for model-level pricing
+    pricing = get_model_pricing(model)
+    if pricing is None:
+        raise ValueError(
+            f"No pricing data for model '{model}'. "
+            f"Known models: {sorted(PRICING_TABLE)}. "
+            f"Pricing table last updated: {PRICING_LAST_UPDATED}."
+        )
+    return cost_from_pricing(
+        model,
+        pricing,
+        usage,
+        resolved_model=resolve_model_pricing_key(model) or model,
     )
 
 

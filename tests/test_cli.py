@@ -154,6 +154,71 @@ class TestMainDispatch:
         assert payload["input_tokens"] > 0
         assert payload["fits"] is True
 
+    def test_endpoints_import_list_and_compare(self, monkeypatch, capsys, tmp_path):
+        source = tmp_path / "endpoints.json"
+        source.write_text(
+            json.dumps(
+                {
+                    "data": {
+                        "id": "testvendor/cli-endpoint-model",
+                        "endpoints": [
+                            {
+                                "provider_name": "provider-a",
+                                "pricing": {
+                                    "prompt": "0.000001",
+                                    "completion": "0.000002",
+                                },
+                            },
+                            {
+                                "provider_name": "provider-b",
+                                "pricing": {
+                                    "prompt": "0.000003",
+                                    "completion": "0.000006",
+                                },
+                            },
+                        ],
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        self._run(
+            monkeypatch,
+            ["pytokencalc", "endpoints", "import", "--file", str(source)],
+        )
+        imported = json.loads(capsys.readouterr().out)
+        assert imported["imported"] == 2
+
+        self._run(
+            monkeypatch,
+            [
+                "pytokencalc",
+                "endpoints",
+                "list",
+                "--model",
+                "testvendor/cli-endpoint-model",
+            ],
+        )
+        listed = json.loads(capsys.readouterr().out)
+        assert listed["count"] == 2
+
+        self._run(
+            monkeypatch,
+            [
+                "pytokencalc",
+                "endpoints",
+                "compare",
+                "--model",
+                "testvendor/cli-endpoint-model",
+                "--input-tokens",
+                "1000",
+                "--output-tokens",
+                "500",
+            ],
+        )
+        compared = json.loads(capsys.readouterr().out)
+        assert compared["cheapest_provider"] == "provider-a"
+
     def test_compare_command(self, monkeypatch, capsys):
         self._run(
             monkeypatch,

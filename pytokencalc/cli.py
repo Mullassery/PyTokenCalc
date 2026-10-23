@@ -687,6 +687,104 @@ def main():
                 )
             )
 
+        elif command == "endpoints":
+            from .catalog import get_model_spec
+            from .endpoints import compare_endpoints
+            from .openrouter import import_openrouter_endpoints_file
+            from .pricing import Usage
+
+            subcommand = sys.argv[2] if len(sys.argv) > 2 else "list"
+            if subcommand == "import":
+                options, positional = _parse_cli_options(
+                    sys.argv[3:], {"file", "model"}
+                )
+                if positional:
+                    raise ValueError(
+                        "endpoints import takes options, not positional arguments"
+                    )
+                source = _required_option(options, "file")
+                result = import_openrouter_endpoints_file(
+                    source, model_id=options.get("model")
+                )
+                print(json.dumps(result.to_dict()))
+            elif subcommand == "list":
+                options, positional = _parse_cli_options(
+                    sys.argv[3:], {"model"}
+                )
+                if positional:
+                    raise ValueError(
+                        "endpoints list takes options, not positional arguments"
+                    )
+                model = _required_option(options, "model")
+                spec = get_model_spec(model)
+                if spec is None:
+                    raise ValueError(f"Unknown model: {model}")
+                print(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "model": spec.id,
+                            "count": len(spec.endpoints),
+                            "endpoints": [
+                                endpoint.to_dict() for endpoint in spec.endpoints
+                            ],
+                        }
+                    )
+                )
+            elif subcommand == "compare":
+                options, positional = _parse_cli_options(
+                    sys.argv[3:],
+                    {
+                        "model",
+                        "input_tokens",
+                        "output_tokens",
+                        "cached_input_tokens",
+                        "cache_write_tokens",
+                        "provider",
+                        "requests",
+                    },
+                )
+                if positional:
+                    raise ValueError(
+                        "endpoints compare takes options, not positional arguments"
+                    )
+                model = _required_option(options, "model")
+                usage = Usage(
+                    input_tokens=int(_required_option(options, "input_tokens")),
+                    output_tokens=int(options.get("output_tokens", 0)),
+                    cached_input_tokens=int(
+                        options.get("cached_input_tokens", 0)
+                    ),
+                    cache_write_tokens=int(
+                        options.get("cache_write_tokens", 0)
+                    ),
+                    request_count=int(options.get("requests", 1)),
+                )
+                comparisons = compare_endpoints(
+                    model, usage, provider=options.get("provider")
+                )
+                print(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "model": model,
+                            "comparisons": [
+                                item.to_dict() for item in comparisons
+                            ],
+                            "cheapest_provider": next(
+                                (
+                                    item.endpoint.provider
+                                    for item in comparisons
+                                    if item.cost is not None
+                                ),
+                                None,
+                            ),
+                        }
+                    )
+                )
+            else:
+                raise ValueError(f"Unknown endpoints subcommand: {subcommand}")
+
         elif command == "baseline":
             result = _handle_baseline_command(cli, sys.argv[2:])
             print(json.dumps(result))
@@ -763,6 +861,15 @@ COMMANDS:
 
     compare --models MODEL1,MODEL2 --input-tokens N [--output-tokens N]
         Compare one usage profile across models, cheapest first
+
+    endpoints import --file FILE [--model MODEL]
+        Import a downloaded OpenRouter model-endpoints JSON snapshot
+
+    endpoints list --model MODEL
+        Show endpoint-level pricing/metadata for a model
+
+    endpoints compare --model MODEL --input-tokens N [--output-tokens N]
+        Compare providers/endpoints for one model, cheapest first
 
     providers
         List all available token counter providers

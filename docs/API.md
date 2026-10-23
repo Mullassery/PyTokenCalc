@@ -130,6 +130,9 @@ pytokencalc reconcile --file response.json --model gpt-4o --expected-cost 0.001
 pytokencalc usage add --file response.json --model gpt-4o --ledger usage.jsonl
 pytokencalc usage report --ledger usage.jsonl
 pytokencalc compare --models gpt-4o,gpt-4o-mini --input-tokens 1000 --output-tokens 500
+pytokencalc endpoints import --file endpoints.json --model openai/gpt-4o
+pytokencalc endpoints list --model openai/gpt-4o
+pytokencalc endpoints compare --model openai/gpt-4o --input-tokens 1000
 pytokencalc cache-stats
 pytokencalc help
 
@@ -250,6 +253,23 @@ OpenRouter per-token prices are converted to PyTokenCalc's per-million rates;
 containing `:` (`:free`, `:nitro`) are skipped by default; pass
 `include_variants=True` to include them. Imported prices are in-memory only --
 persist them with a pricing override if you need reproducibility across runs.
+
+## Endpoint comparison
+
+```python
+from pytokencalc import compare_endpoints, import_openrouter_endpoints_file, Usage
+
+# Download /api/v1/models/{author}/{slug}/endpoints first; no runtime fetch.
+import_openrouter_endpoints_file("endpoints.json", model_id="openai/gpt-4o")
+
+for item in compare_endpoints("openai/gpt-4o", Usage(input_tokens=1_000, output_tokens=500)):
+    print(item.endpoint.provider, item.cost.total_usd if item.cost else item.error)
+```
+
+Endpoint-specific prices override the model's price. Endpoints without a price
+fall back to the model price; if neither exists the endpoint is reported last
+with an error. Imported uptime/latency/throughput are metadata only --
+PyTokenCalc does not route requests.
 
 ## Usage ledger
 

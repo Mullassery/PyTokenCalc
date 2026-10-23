@@ -30,10 +30,13 @@ All notable changes to PyTokenCalc are documented in this file.
   recording, filtering, and spend summaries by model/provider.
 - `compare_models()`: rank models by cost for a given `Usage`, with unpriced
   models reported last instead of aborting the comparison.
+- `compare_endpoints()` and OpenRouter endpoint snapshot import: per-provider
+  pricing with uptime/latency/throughput metadata, ranked cheapest first.
 - REST: `/v1/models`, `/v1/cost`, `/v1/reconcile`, `/v1/preflight`, and
   `/openapi.json` for catalog/cost/preflight integrations.
 - CLI: `catalog`, `catalog import`, `model-info`, `preflight`, `reconcile`,
-  `usage add`, `usage report`, `usage list`, and `compare`.
+  `usage add`, `usage report`, `usage list`, `compare`, and `endpoints`
+  (`import`, `list`, `compare`).
 
 ### Fixed
 - Pricing lookup no longer prefix-matches genuinely different model families:

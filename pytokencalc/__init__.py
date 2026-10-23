@@ -52,11 +52,19 @@ from .catalog import (
     list_models,
     register_model_spec,
 )
+from .endpoints import (
+    EndpointCostComparison,
+    compare_endpoints,
+    endpoint_pricing,
+)
 from .ledger import DEFAULT_LEDGER_PATH, UsageLedger
 from .openrouter import (
+    OpenRouterEndpointImportResult,
     OpenRouterImportResult,
     import_openrouter_catalog,
     import_openrouter_catalog_file,
+    import_openrouter_endpoints,
+    import_openrouter_endpoints_file,
 )
 from .preflight import PreflightResult, preflight
 from .pricing import (
@@ -154,14 +162,20 @@ __all__ = [
     "get_model_spec",
     "list_models",
     "register_model_spec",
+    "EndpointCostComparison",
+    "compare_endpoints",
+    "endpoint_pricing",
     "Reconciliation",
     "parse_usage",
     "reconcile",
     "PreflightResult",
     "preflight",
     "OpenRouterImportResult",
+    "OpenRouterEndpointImportResult",
     "import_openrouter_catalog",
     "import_openrouter_catalog_file",
+    "import_openrouter_endpoints",
+    "import_openrouter_endpoints_file",
     "UsageLedger",
     "DEFAULT_LEDGER_PATH",
     # Token counting interface

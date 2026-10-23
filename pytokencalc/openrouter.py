@@ -12,12 +12,18 @@ rates PyTokenCalc uses internally.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+import math
+from dataclasses import dataclass, replace
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any, List, Mapping, Optional, Tuple
 
-from .catalog import ModelSpec, ProviderEndpoint, register_model_spec
+from .catalog import (
+    ModelSpec,
+    ProviderEndpoint,
+    get_model_spec,
+    register_model_spec,
+)
 from .pricing import PRICING_TABLE, ModelPricing
 
 _OPENROUTER_CAPABILITIES = ("tools", "reasoning", "structured_outputs")
@@ -266,4 +272,201 @@ def import_openrouter_catalog_file(
         payload,
         source=str(path),
         include_variants=include_variants,
+    )
+
+
+@dataclass(frozen=True)
+class OpenRouterEndpointImportResult:
+    model: str
+    imported: int
+    skipped_invalid: int
+    warnings: Tuple[str, ...]
+    source: str
+
+    def to_dict(self) -> dict:
+        return {
+            "model": self.model,
+            "imported": self.imported,
+            "skipped_invalid": self.skipped_invalid,
+            "warnings": list(self.warnings),
+            "source": self.source,
+        }
+
+
+def _finite_float(value: Any) -> Optional[float]:
+    if value is None or value == "":
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(parsed):
+        return None
+    return parsed
+
+
+def _quantizations(value: Any) -> Tuple[str, ...]:
+    if value is None:
+        return ()
+    if isinstance(value, str):
+        return (value,)
+    if isinstance(value, (list, tuple)):
+        return tuple(str(item) for item in value if item is not None)
+    return ()
+
+
+def _endpoints_from_payload(
+    payload: Any,
+) -> Tuple[Optional[str], List[Mapping[str, Any]], Optional[str]]:
+    if isinstance(payload, Mapping):
+        data = payload.get("data", payload)
+        fetched_at = payload.get("fetched_at") or payload.get("updated_at")
+        if isinstance(data, Mapping):
+            model_id = data.get("id") or data.get("model_id") or data.get("model")
+            endpoints = data.get("endpoints", data.get("data"))
+            if isinstance(endpoints, (list, tuple)):
+                return (
+                    str(model_id) if model_id is not None else None,
+                    [item for item in endpoints if isinstance(item, Mapping)],
+                    fetched_at,
+                )
+            raise ValueError('OpenRouter endpoint payload must contain an "endpoints" array')
+        if isinstance(data, (list, tuple)):
+            return (
+                None,
+                [item for item in data if isinstance(item, Mapping)],
+                fetched_at,
+            )
+    if isinstance(payload, (list, tuple)):
+        return None, [item for item in payload if isinstance(item, Mapping)], None
+    raise ValueError("OpenRouter endpoint payload must be an object or array")
+
+
+def import_openrouter_endpoints(
+    payload: Any,
+    *,
+    model_id: Optional[str] = None,
+    source: str = "snapshot",
+) -> OpenRouterEndpointImportResult:
+    """Import a downloaded OpenRouter model-endpoints snapshot.
+
+    Endpoint pricing is converted to per-million rates; latency/uptime/
+    throughput are stored as provider-reported metadata only. No routing is
+    performed by PyTokenCalc.
+    """
+    payload_model, endpoint_mappings, fetched_at = _endpoints_from_payload(payload)
+    resolved_model = model_id or payload_model
+    if not resolved_model:
+        raise ValueError("model_id is required when the payload has no model id")
+
+    warnings: List[str] = []
+    endpoints: List[ProviderEndpoint] = []
+    skipped = 0
+    for raw in endpoint_mappings:
+        provider = raw.get("provider_name") or raw.get("provider") or "unknown"
+        pricing_raw = raw.get("pricing")
+        if not isinstance(pricing_raw, Mapping):
+            pricing_raw = {}
+        pricing, pricing_warnings = _pricing_from_openrouter(pricing_raw)
+        warnings.extend(
+            f"{resolved_model}/{provider}: {warning}" for warning in pricing_warnings
+        )
+        if pricing is None:
+            skipped += 1
+
+        latency_data = raw.get("latency_last_30m")
+        latency_p50 = None
+        if isinstance(latency_data, Mapping):
+            latency_p50 = _finite_float(latency_data.get("p50"))
+
+        context_length = raw.get("context_length")
+        if not isinstance(context_length, int) or context_length < 0:
+            context_length = None
+        max_output = raw.get(
+            "max_completion_tokens", raw.get("max_output_tokens")
+        )
+        if not isinstance(max_output, int) or max_output < 0:
+            max_output = None
+
+        endpoints.append(
+            ProviderEndpoint(
+                provider=str(provider),
+                context_length=context_length,
+                max_output_tokens=max_output,
+                quantizations=_quantizations(raw.get("quantization")),
+                input_per_million=(
+                    pricing.input_per_million if pricing is not None else None
+                ),
+                output_per_million=(
+                    pricing.output_per_million if pricing is not None else None
+                ),
+                cache_read_per_million=(
+                    pricing.cache_read_per_million if pricing is not None else None
+                ),
+                cache_write_per_million=(
+                    pricing.cache_write_per_million if pricing is not None else None
+                ),
+                request_fee_usd=(
+                    pricing.request_fee_usd if pricing is not None else 0.0
+                ),
+                uptime_last_30m=_finite_float(raw.get("uptime_last_30m")),
+                latency_p50_seconds=latency_p50,
+                throughput_tokens_per_second=_finite_float(
+                    raw.get("throughput_last_30m")
+                ),
+                status=(
+                    str(raw.get("status"))
+                    if raw.get("status") is not None
+                    else None
+                ),
+                note=(
+                    raw.get("name")
+                    if isinstance(raw.get("name"), str)
+                    else "OpenRouter endpoint"
+                ),
+            )
+        )
+
+    spec = get_model_spec(resolved_model)
+    spec_source = f"openrouter:{source}"
+    if fetched_at:
+        spec_source = f"{spec_source}@{fetched_at}"
+    if spec is None:
+        provider = (
+            resolved_model.split("/", 1)[0]
+            if "/" in resolved_model
+            else "openrouter"
+        )
+        spec = ModelSpec(
+            id=resolved_model,
+            name=resolved_model,
+            provider=provider,
+            endpoints=tuple(endpoints),
+            source=spec_source,
+        )
+        warnings.append("model was not in the catalog; created a minimal spec")
+    else:
+        spec = replace(spec, endpoints=tuple(endpoints), source=spec_source)
+
+    register_model_spec(spec, overwrite=True)
+    return OpenRouterEndpointImportResult(
+        model=resolved_model,
+        imported=len(endpoints),
+        skipped_invalid=skipped,
+        warnings=tuple(dict.fromkeys(warnings)),
+        source=source,
+    )
+
+
+def import_openrouter_endpoints_file(
+    path: str,
+    *,
+    model_id: Optional[str] = None,
+) -> OpenRouterEndpointImportResult:
+    """Load and import an OpenRouter endpoints JSON snapshot from disk."""
+    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    return import_openrouter_endpoints(
+        payload,
+        model_id=model_id,
+        source=str(path),
     )

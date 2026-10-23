@@ -38,7 +38,10 @@ from compiled code in PyTokenCalc itself. It installs and imports as `pytokencal
 - **Reconciliation** — `reconcile(response)` normalizes OpenAI, Anthropic, and
   OpenRouter usage metadata and compares actual cost with your preflight estimate.
 - **OpenRouter snapshot import** — `import_openrouter_catalog_file()` converts a
-  downloaded `/api/v1/models` JSON snapshot into local catalog/pricing metadata.
+  downloaded `/api/v1/models` JSON snapshot into local catalog/pricing metadata;
+  `import_openrouter_endpoints_file()` adds per-provider endpoint pricing/stats.
+- **Endpoint comparison** — `compare_endpoints()` ranks providers serving the same
+  model by cost, with uptime/latency/throughput metadata when imported.
 - **Optional usage ledger** — `UsageLedger` appends reconciliation records as JSONL
   and summarizes spend by model/provider; no service or database required.
 - **REST + OpenAPI** — `/v1/models`, `/v1/cost`, `/v1/reconcile`, `/v1/preflight`,

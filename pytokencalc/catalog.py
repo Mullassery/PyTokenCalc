@@ -26,7 +26,41 @@ class ProviderEndpoint:
     context_length: Optional[int] = None
     max_output_tokens: Optional[int] = None
     quantizations: Tuple[str, ...] = ()
+    input_per_million: Optional[float] = None
+    output_per_million: Optional[float] = None
+    cache_read_per_million: Optional[float] = None
+    cache_write_per_million: Optional[float] = None
+    request_fee_usd: float = 0.0
+    uptime_last_30m: Optional[float] = None
+    latency_p50_seconds: Optional[float] = None
+    throughput_tokens_per_second: Optional[float] = None
+    status: Optional[str] = None
     note: str = ""
+
+    def to_dict(self) -> Dict[str, object]:
+        return {
+            "provider": self.provider,
+            "context_length": self.context_length,
+            "max_output_tokens": self.max_output_tokens,
+            "quantizations": list(self.quantizations),
+            "pricing_per_million": (
+                {
+                    "input": self.input_per_million,
+                    "output": self.output_per_million,
+                    "cache_read": self.cache_read_per_million,
+                    "cache_write": self.cache_write_per_million,
+                    "request_fee_usd": self.request_fee_usd,
+                }
+                if self.input_per_million is not None
+                and self.output_per_million is not None
+                else None
+            ),
+            "uptime_last_30m": self.uptime_last_30m,
+            "latency_p50_seconds": self.latency_p50_seconds,
+            "throughput_tokens_per_second": self.throughput_tokens_per_second,
+            "status": self.status,
+            "note": self.note,
+        }
 
 
 @dataclass(frozen=True)
@@ -81,16 +115,7 @@ class ModelSpec:
                 if pricing is not None
                 else None
             ),
-            "endpoints": [
-                {
-                    "provider": endpoint.provider,
-                    "context_length": endpoint.context_length,
-                    "max_output_tokens": endpoint.max_output_tokens,
-                    "quantizations": list(endpoint.quantizations),
-                    "note": endpoint.note,
-                }
-                for endpoint in self.endpoints
-            ],
+            "endpoints": [endpoint.to_dict() for endpoint in self.endpoints],
             "source": self.source,
         }
 
