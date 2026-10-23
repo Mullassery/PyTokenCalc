@@ -2,14 +2,7 @@
 
 All notable changes to PyTokenCalc are documented in this file.
 
-## [1.4.2] - 2026-10-24
-
-### Changed
-- Declare Python 3.13 support via the `Programming Language :: Python :: 3.13`
-  classifier and add 3.13 to the CI test matrix.
-- Align project metadata with the README's beta status and remove the
-  unsupported "99%+ accuracy" packaging claim.
-- `pytokencalc[server]` is now a real optional extra for the Flask REST API.
+## [1.5.0] - 2026-10-24
 
 ### Added
 - `pytokencalc.catalog`: `ModelSpec`, `ProviderEndpoint`, `get_model_spec()`,
@@ -40,6 +33,11 @@ All notable changes to PyTokenCalc are documented in this file.
   `usage add`, `usage report`, `usage list`, `compare`, `endpoints`
   (`import`, `list`, `compare`), and `benchmark`.
 
+### Changed
+- Align project metadata with the README's beta status and remove the
+  unsupported "99%+ accuracy" packaging claim.
+- `pytokencalc[server]` is now a real optional extra for the Flask REST API.
+
 ### Fixed
 - Pricing lookup no longer prefix-matches genuinely different model families:
   `gpt-4.1` no longer silently inherits `gpt-4` pricing, and variants such as
@@ -60,6 +58,12 @@ All notable changes to PyTokenCalc are documented in this file.
 - MCP HTTP/SSE binds to non-loopback hosts are refused unless
   `PYTOKENCALC_MCP_ALLOW_UNAUTHENTICATED=1` is set; `pytokencalc.toml` no
   longer claims an unimplemented `require_auth` default.
+
+## [1.4.2] - 2026-10-24
+
+### Changed
+- Declare Python 3.13 support via the `Programming Language :: Python :: 3.13`
+  classifier and add 3.13 to the CI test matrix.
 
 ## [1.4.0] - 2026-10-19
 

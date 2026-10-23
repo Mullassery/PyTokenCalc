@@ -1,5 +1,5 @@
 """
-PyTokenCalc v1.4.2: Universal Token Counting for ANY LLM
+PyTokenCalc v1.5.0: Universal Token Counting for ANY LLM
 
 One library. One API. Every LLM provider. Custom models. BYOM support.
 

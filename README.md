@@ -94,7 +94,7 @@ from compiled code in PyTokenCalc itself. It installs and imports as `pytokencal
 
 ## Project status
 
-**Beta.** Current version **1.4.2** (`Development Status :: 4 - Beta` in
+**Beta.** Current version **1.5.0** (`Development Status :: 4 - Beta` in
 `pyproject.toml`). The local OpenAI/HuggingFace counting path is well covered by tests;
 provider-specific paths require their optional dependencies. See
 [`ROADMAP_HONEST.md`](ROADMAP_HONEST.md) for the full honest status and technical-debt
