@@ -81,6 +81,7 @@ pytokencalc/
 ├── catalog.py                 # model metadata, aliases, context limits
 ├── openrouter.py              # offline OpenRouter model/endpoint importers
 ├── endpoints.py               # endpoint-level cost comparison
+├── benchmark.py               # offline parity benchmark
 ├── ledger.py                  # optional JSONL usage ledger
 ├── preflight.py               # chat/tool/image preflight
 ├── reconcile.py               # provider usage normalization/reconciliation

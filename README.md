@@ -42,6 +42,8 @@ from compiled code in PyTokenCalc itself. It installs and imports as `pytokencal
   `import_openrouter_endpoints_file()` adds per-provider endpoint pricing/stats.
 - **Endpoint comparison** — `compare_endpoints()` ranks providers serving the same
   model by cost, with uptime/latency/throughput metadata when imported.
+- **Parity benchmark** — `benchmark_counts()` compares local counts with
+  provider-reported usage from a JSONL sample set.
 - **Optional usage ledger** — `UsageLedger` appends reconciliation records as JSONL
   and summarizes spend by model/provider; no service or database required.
 - **REST + OpenAPI** — `/v1/models`, `/v1/cost`, `/v1/reconcile`, `/v1/preflight`,

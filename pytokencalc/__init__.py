@@ -45,6 +45,7 @@ __author__ = "Georgi Mammen Mullassery"
 
 # Top-level ergonomic API (v1.1.0+): count_tokens() -> int, estimate_cost() -> USD
 from .api import count_tokens, estimate_cost
+from .benchmark import ParitySampleResult, ParitySummary, benchmark_counts
 from .catalog import (
     ModelSpec,
     ProviderEndpoint,
@@ -162,6 +163,9 @@ __all__ = [
     "get_model_spec",
     "list_models",
     "register_model_spec",
+    "ParitySampleResult",
+    "ParitySummary",
+    "benchmark_counts",
     "EndpointCostComparison",
     "compare_endpoints",
     "endpoint_pricing",

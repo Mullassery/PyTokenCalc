@@ -219,6 +219,21 @@ class TestMainDispatch:
         compared = json.loads(capsys.readouterr().out)
         assert compared["cheapest_provider"] == "provider-a"
 
+    def test_benchmark_command(self, monkeypatch, capsys, tmp_path):
+        samples = tmp_path / "samples.jsonl"
+        samples.write_text(
+            '{"model": "gpt-4o", "prompt": "hello world",'
+            ' "usage": {"prompt_tokens": 2}}\n',
+            encoding="utf-8",
+        )
+        self._run(
+            monkeypatch,
+            ["pytokencalc", "benchmark", "--file", str(samples)],
+        )
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["count"] == 1
+        assert payload["exact_matches"] == 1
+
     def test_compare_command(self, monkeypatch, capsys):
         self._run(
             monkeypatch,

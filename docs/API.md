@@ -133,6 +133,7 @@ pytokencalc compare --models gpt-4o,gpt-4o-mini --input-tokens 1000 --output-tok
 pytokencalc endpoints import --file endpoints.json --model openai/gpt-4o
 pytokencalc endpoints list --model openai/gpt-4o
 pytokencalc endpoints compare --model openai/gpt-4o --input-tokens 1000
+pytokencalc benchmark --file samples.jsonl
 pytokencalc cache-stats
 pytokencalc help
 
@@ -270,6 +271,28 @@ Endpoint-specific prices override the model's price. Endpoints without a price
 fall back to the model price; if neither exists the endpoint is reported last
 with an error. Imported uptime/latency/throughput are metadata only --
 PyTokenCalc does not route requests.
+
+## Parity benchmark
+
+```python
+from pytokencalc import benchmark_counts
+from pytokencalc.benchmark import load_samples
+
+summary = benchmark_counts(load_samples("samples.jsonl"))
+print(summary.exact_match_rate, summary.mean_absolute_percent_error)
+```
+
+Each JSONL line is a prompt plus provider usage:
+
+```json
+{"model": "gpt-4o", "prompt": "Hello world", "usage": {"prompt_tokens": 2}}
+```
+
+```bash
+pytokencalc benchmark --file samples.jsonl
+```
+
+The benchmark is offline; you supply the provider-reported usage samples.
 
 ## Usage ledger
 

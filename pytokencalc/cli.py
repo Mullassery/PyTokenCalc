@@ -785,6 +785,22 @@ def main():
             else:
                 raise ValueError(f"Unknown endpoints subcommand: {subcommand}")
 
+        elif command == "benchmark":
+            from .benchmark import benchmark_counts, load_samples
+
+            options, positional = _parse_cli_options(
+                sys.argv[2:], {"file", "model", "provider"}
+            )
+            if positional:
+                raise ValueError("benchmark takes options, not positional arguments")
+            source = _required_option(options, "file")
+            summary = benchmark_counts(
+                load_samples(source),
+                model=options.get("model"),
+                provider=options.get("provider"),
+            )
+            print(json.dumps({"status": "success", **summary.to_dict()}))
+
         elif command == "baseline":
             result = _handle_baseline_command(cli, sys.argv[2:])
             print(json.dumps(result))
@@ -870,6 +886,9 @@ COMMANDS:
 
     endpoints compare --model MODEL --input-tokens N [--output-tokens N]
         Compare providers/endpoints for one model, cheapest first
+
+    benchmark --file SAMPLES.jsonl [--model MODEL] [--provider P]
+        Compare local token counts against provider-reported usage
 
     providers
         List all available token counter providers
