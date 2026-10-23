@@ -110,6 +110,21 @@ class TestMainDispatch:
         assert payload["count"] > 0
         assert all(model["provider"] == "openai" for model in payload["models"])
 
+    def test_catalog_import_command(self, monkeypatch, capsys, tmp_path):
+        source = tmp_path / "models.json"
+        source.write_text(
+            '{"data": [{"id": "testvendor/cli-model",'
+            ' "pricing": {"prompt": "0.000001", "completion": "0.000002"}}]}',
+            encoding="utf-8",
+        )
+        self._run(
+            monkeypatch,
+            ["pytokencalc", "catalog", "import", "--file", str(source)],
+        )
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["imported"] == 1
+        assert payload["pricing_imported"] == 1
+
     def test_model_info_prints_metadata(self, monkeypatch, capsys):
         self._run(monkeypatch, ["pytokencalc", "model-info", "gpt-4o"])
         payload = json.loads(capsys.readouterr().out)
@@ -138,6 +153,61 @@ class TestMainDispatch:
         payload = json.loads(capsys.readouterr().out)
         assert payload["input_tokens"] > 0
         assert payload["fits"] is True
+
+    def test_compare_command(self, monkeypatch, capsys):
+        self._run(
+            monkeypatch,
+            [
+                "pytokencalc",
+                "compare",
+                "--models",
+                "gpt-4o,gpt-4o-mini",
+                "--input-tokens",
+                "1000",
+                "--output-tokens",
+                "500",
+            ],
+        )
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["cheapest_model"] == "gpt-4o-mini"
+        assert payload["comparisons"][0]["model"] == "gpt-4o-mini"
+
+    def test_usage_add_and_report_commands(self, monkeypatch, capsys, tmp_path):
+        response = tmp_path / "response.json"
+        response.write_text(
+            '{"usage": {"prompt_tokens": 100, "completion_tokens": 20}}',
+            encoding="utf-8",
+        )
+        ledger = tmp_path / "usage.jsonl"
+        self._run(
+            monkeypatch,
+            [
+                "pytokencalc",
+                "usage",
+                "add",
+                "--file",
+                str(response),
+                "--model",
+                "gpt-4o",
+                "--ledger",
+                str(ledger),
+                "--tags",
+                "env=test",
+                "--generation-id",
+                "gen-1",
+            ],
+        )
+        added = json.loads(capsys.readouterr().out)
+        assert added["record"]["generation_id"] == "gen-1"
+        assert added["record"]["tags"] == {"env": "test"}
+
+        self._run(
+            monkeypatch,
+            ["pytokencalc", "usage", "report", "--ledger", str(ledger)],
+        )
+        report = json.loads(capsys.readouterr().out)
+        assert report["totals"]["records"] == 1
+        assert report["totals"]["input_tokens"] == 100
 
     def test_reconcile_command(self, monkeypatch, capsys, tmp_path):
         response = tmp_path / "response.json"

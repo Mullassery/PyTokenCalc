@@ -99,6 +99,72 @@ class PyTokenCalcServer:
                 "count": len(all_models),
             }
 
+    def list_catalog(self, provider: Optional[str] = None) -> Dict[str, Any]:
+        """Return normalized model metadata."""
+        from .catalog import list_models
+
+        specs = list_models(provider)
+        return {
+            "status": "success",
+            "provider": provider,
+            "models": [spec.to_dict() for spec in specs],
+            "count": len(specs),
+        }
+
+    def estimate_usage(
+        self,
+        model: str,
+        usage: Dict[str, Any],
+        provider: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Estimate line-item USD cost from explicit usage fields."""
+        from .pricing import Usage
+        from .pricing import estimate_usage as _estimate_usage
+
+        if not isinstance(usage, dict):
+            raise ValueError("usage must be an object")
+        breakdown = _estimate_usage(model, Usage(**usage), provider)
+        return {"status": "success", "cost": breakdown.to_dict()}
+
+    def reconcile_response(
+        self,
+        model: str,
+        response: Dict[str, Any],
+        provider: Optional[str] = None,
+        expected_cost_usd: Optional[float] = None,
+    ) -> Dict[str, Any]:
+        """Reconcile provider usage/cost from a response payload."""
+        from .reconcile import reconcile
+
+        result = reconcile(
+            model,
+            response,
+            provider=provider,
+            expected_cost_usd=expected_cost_usd,
+        )
+        return {"status": "success", **result.to_dict()}
+
+    def preflight_request(
+        self,
+        messages: Any,
+        model: str,
+        tools: Any = None,
+        max_output_tokens: Optional[int] = None,
+        provider: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Estimate chat prompt tokens, context fit, and cost."""
+        from .preflight import preflight
+
+        result = preflight(
+            messages,
+            model,
+            tools=tools,
+            max_output_tokens=max_output_tokens,
+            provider=provider,
+            registry=self.registry,
+        )
+        return {"status": "success", **result.to_dict()}
+
     def get_cache_stats(self) -> Dict[str, Any]:
         """Get cache stats."""
         stats = self.cache.get_stats()
@@ -200,7 +266,117 @@ def create_flask_app(server: Optional[PyTokenCalcServer] = None):
         """Clear cache."""
         return jsonify(srv.clear_cache())
 
+    @app.route("/v1/models", methods=["GET"])
+    def v1_models():
+        """Normalized model catalog."""
+        return jsonify(srv.list_catalog(request.args.get("provider")))
+
+    @app.route("/v1/cost", methods=["POST"])
+    def v1_cost():
+        """Usage-aware cost estimate."""
+        data = request.get_json() or {}
+        model = data.get("model")
+        usage = data.get("usage")
+        if not model or not isinstance(usage, dict):
+            return (
+                jsonify({"status": "error", "message": "model and usage object required"}),
+                400,
+            )
+        try:
+            return jsonify(srv.estimate_usage(model, usage, data.get("provider")))
+        except (TypeError, ValueError) as exc:
+            return jsonify({"status": "error", "message": str(exc)}), 400
+
+    @app.route("/v1/reconcile", methods=["POST"])
+    def v1_reconcile():
+        """Reconcile a provider response's usage/cost."""
+        data = request.get_json() or {}
+        model = data.get("model")
+        response = data.get("response", data)
+        if not model or not isinstance(response, dict):
+            return (
+                jsonify({"status": "error", "message": "model and response object required"}),
+                400,
+            )
+        try:
+            return jsonify(
+                srv.reconcile_response(
+                    model,
+                    response,
+                    provider=data.get("provider"),
+                    expected_cost_usd=data.get("expected_cost_usd"),
+                )
+            )
+        except (TypeError, ValueError) as exc:
+            return jsonify({"status": "error", "message": str(exc)}), 400
+
+    @app.route("/v1/preflight", methods=["POST"])
+    def v1_preflight():
+        """Estimate tokens/context/cost before sending a chat request."""
+        data = request.get_json() or {}
+        model = data.get("model")
+        messages = data.get("messages")
+        if not model or messages is None:
+            return (
+                jsonify({"status": "error", "message": "model and messages required"}),
+                400,
+            )
+        try:
+            return jsonify(
+                srv.preflight_request(
+                    messages,
+                    model,
+                    tools=data.get("tools"),
+                    max_output_tokens=data.get("max_output_tokens"),
+                    provider=data.get("provider"),
+                )
+            )
+        except (TypeError, ValueError) as exc:
+            return jsonify({"status": "error", "message": str(exc)}), 400
+
+    @app.route("/openapi.json", methods=["GET"])
+    def openapi():
+        """OpenAPI 3.0 description of the REST surface."""
+        return jsonify(openapi_spec())
+
     return app
+
+
+def openapi_spec() -> Dict[str, Any]:
+    """Return an OpenAPI 3.0.3 document for the REST surface."""
+    return {
+        "openapi": "3.0.3",
+        "info": {
+            "title": "PyTokenCalc REST API",
+            "version": __version__,
+            "description": "Token counting, cost estimation, reconciliation, and chat preflight.",
+        },
+        "paths": {
+            "/health": {"get": {"summary": "Health check", "responses": {"200": {"description": "OK"}}}},
+            "/providers": {"get": {"summary": "List tokenizer providers", "responses": {"200": {"description": "OK"}}}},
+            "/models": {"get": {"summary": "List provider-supported model IDs", "responses": {"200": {"description": "OK"}}}},
+            "/v1/models": {
+                "get": {
+                    "summary": "Normalized model catalog",
+                    "parameters": [
+                        {
+                            "name": "provider",
+                            "in": "query",
+                            "required": False,
+                            "schema": {"type": "string"},
+                        }
+                    ],
+                    "responses": {"200": {"description": "OK"}},
+                }
+            },
+            "/count": {"post": {"summary": "Count text tokens", "responses": {"200": {"description": "OK"}, "400": {"description": "Invalid request"}}}},
+            "/count-vision": {"post": {"summary": "Count text+image tokens", "responses": {"200": {"description": "OK"}, "400": {"description": "Invalid request"}}}},
+            "/v1/cost": {"post": {"summary": "Usage-aware cost estimate", "responses": {"200": {"description": "OK"}, "400": {"description": "Invalid request"}}}},
+            "/v1/reconcile": {"post": {"summary": "Reconcile provider usage/cost", "responses": {"200": {"description": "OK"}, "400": {"description": "Invalid request"}}}},
+            "/v1/preflight": {"post": {"summary": "Chat context/cost preflight", "responses": {"200": {"description": "OK"}, "400": {"description": "Invalid request"}}}},
+            "/cache": {"get": {"summary": "Cache stats", "responses": {"200": {"description": "OK"}}}, "delete": {"summary": "Clear cache", "responses": {"200": {"description": "OK"}}}},
+        },
+    }
 
 
 def run_server(host: str = "127.0.0.1", port: int = 8005):

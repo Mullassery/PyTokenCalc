@@ -23,7 +23,17 @@ All notable changes to PyTokenCalc are documented in this file.
   preflight cost/usage.
 - `preflight(messages, tools=..., max_output_tokens=...)`: token, context-fit,
   and cost estimation before sending a chat request.
-- CLI: `catalog`, `model-info`, `preflight`, and `reconcile`.
+- `pytokencalc.openrouter`: offline importer for OpenRouter
+  `/api/v1/models` snapshots, including per-token-to-per-million pricing
+  conversion, cache/request rates, modalities, capabilities, and variants.
+- `UsageLedger`: optional append-only JSONL ledger with reconciliation
+  recording, filtering, and spend summaries by model/provider.
+- `compare_models()`: rank models by cost for a given `Usage`, with unpriced
+  models reported last instead of aborting the comparison.
+- REST: `/v1/models`, `/v1/cost`, `/v1/reconcile`, `/v1/preflight`, and
+  `/openapi.json` for catalog/cost/preflight integrations.
+- CLI: `catalog`, `catalog import`, `model-info`, `preflight`, `reconcile`,
+  `usage add`, `usage report`, `usage list`, and `compare`.
 
 ### Fixed
 - Pricing lookup no longer prefix-matches genuinely different model families:

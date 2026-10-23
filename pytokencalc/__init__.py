@@ -52,13 +52,21 @@ from .catalog import (
     list_models,
     register_model_spec,
 )
+from .ledger import DEFAULT_LEDGER_PATH, UsageLedger
+from .openrouter import (
+    OpenRouterImportResult,
+    import_openrouter_catalog,
+    import_openrouter_catalog_file,
+)
 from .preflight import PreflightResult, preflight
 from .pricing import (
     PRICING_LAST_UPDATED,
     PRICING_TABLE,
     CostBreakdown,
+    ModelCostComparison,
     ModelPricing,
     Usage,
+    compare_models,
     estimate_usage,
     get_model_pricing,
     load_pricing_override,
@@ -138,6 +146,8 @@ __all__ = [
     "pricing_status",
     "Usage",
     "CostBreakdown",
+    "ModelCostComparison",
+    "compare_models",
     "estimate_usage",
     "ModelSpec",
     "ProviderEndpoint",
@@ -149,6 +159,11 @@ __all__ = [
     "reconcile",
     "PreflightResult",
     "preflight",
+    "OpenRouterImportResult",
+    "import_openrouter_catalog",
+    "import_openrouter_catalog_file",
+    "UsageLedger",
+    "DEFAULT_LEDGER_PATH",
     # Token counting interface
     "TokenCounter",
     "TokenCountResult",

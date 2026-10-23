@@ -206,6 +206,23 @@ def _required_option(options, key):
     return value
 
 
+def _parse_tags(value):
+    tags = {}
+    if not value:
+        return tags
+    for item in value.split(","):
+        item = item.strip()
+        if not item:
+            continue
+        if "=" not in item:
+            raise ValueError("--tags entries must be key=value")
+        key, tag_value = item.split("=", 1)
+        if not key.strip():
+            raise ValueError("--tags keys must be non-empty")
+        tags[key.strip()] = tag_value.strip()
+    return tags
+
+
 def _load_json_object(path):
     """Load a JSON object (or array) from *path*."""
     try:
@@ -432,20 +449,41 @@ def main():
             print(json.dumps(status))
 
         elif command == "catalog":
-            from .catalog import list_models
+            if len(sys.argv) > 2 and sys.argv[2] == "import":
+                from .openrouter import import_openrouter_catalog_file
 
-            provider = sys.argv[2] if len(sys.argv) > 2 else None
-            specs = list_models(provider)
-            print(
-                json.dumps(
-                    {
-                        "status": "success",
-                        "provider": provider,
-                        "models": [spec.to_dict() for spec in specs],
-                        "count": len(specs),
-                    }
+                options, positional = _parse_cli_options(
+                    sys.argv[3:], {"file", "include_variants"}
                 )
-            )
+                if positional:
+                    raise ValueError(
+                        "catalog import takes options, not positional arguments"
+                    )
+                source = _required_option(options, "file")
+                include_variants = options.get("include_variants", "").lower() in {
+                    "1",
+                    "true",
+                    "yes",
+                }
+                result = import_openrouter_catalog_file(
+                    source, include_variants=include_variants
+                )
+                print(json.dumps(result.to_dict()))
+            else:
+                from .catalog import list_models
+
+                provider = sys.argv[2] if len(sys.argv) > 2 else None
+                specs = list_models(provider)
+                print(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "provider": provider,
+                            "models": [spec.to_dict() for spec in specs],
+                            "count": len(specs),
+                        }
+                    )
+                )
 
         elif command == "model-info":
             from .catalog import get_model_spec
@@ -514,6 +552,141 @@ def main():
             )
             print(json.dumps(result.to_dict()))
 
+        elif command == "usage":
+            from .ledger import UsageLedger
+            from .reconcile import reconcile
+
+            subcommand = sys.argv[2] if len(sys.argv) > 2 else "report"
+            if subcommand == "add":
+                options, positional = _parse_cli_options(
+                    sys.argv[3:],
+                    {
+                        "file",
+                        "model",
+                        "provider",
+                        "expected_cost",
+                        "ledger",
+                        "tags",
+                        "generation_id",
+                    },
+                )
+                if positional:
+                    raise ValueError("usage add takes options, not positional arguments")
+                source = _required_option(options, "file")
+                model = _required_option(options, "model")
+                ledger = UsageLedger(options.get("ledger"))
+                expected = (
+                    float(options["expected_cost"])
+                    if "expected_cost" in options
+                    else None
+                )
+                reconciliation = reconcile(
+                    model,
+                    _load_json_object(Path(source)),
+                    provider=options.get("provider"),
+                    expected_cost_usd=expected,
+                )
+                record = ledger.record_reconciliation(
+                    reconciliation,
+                    tags=_parse_tags(options.get("tags")),
+                    generation_id=options.get("generation_id"),
+                )
+                print(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "ledger": str(ledger.path),
+                            "record": record,
+                        }
+                    )
+                )
+            elif subcommand == "report":
+                options, positional = _parse_cli_options(
+                    sys.argv[3:], {"ledger", "since"}
+                )
+                if positional:
+                    raise ValueError("usage report takes options, not positional arguments")
+                ledger = UsageLedger(options.get("ledger"))
+                print(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            **ledger.summary(since=options.get("since")),
+                        }
+                    )
+                )
+            elif subcommand == "list":
+                options, positional = _parse_cli_options(
+                    sys.argv[3:], {"ledger", "since", "limit"}
+                )
+                if positional:
+                    raise ValueError("usage list takes options, not positional arguments")
+                ledger = UsageLedger(options.get("ledger"))
+                limit = int(options["limit"]) if "limit" in options else None
+                records = ledger.list_records(
+                    since=options.get("since"), limit=limit
+                )
+                print(
+                    json.dumps(
+                        {
+                            "status": "success",
+                            "ledger": str(ledger.path),
+                            "count": len(records),
+                            "records": records,
+                        }
+                    )
+                )
+            else:
+                raise ValueError(f"Unknown usage subcommand: {subcommand}")
+
+        elif command == "compare":
+            from .pricing import Usage, compare_models
+
+            options, positional = _parse_cli_options(
+                sys.argv[2:],
+                {
+                    "models",
+                    "input_tokens",
+                    "output_tokens",
+                    "cached_input_tokens",
+                    "cache_write_tokens",
+                    "requests",
+                },
+            )
+            if positional:
+                raise ValueError("compare takes options, not positional arguments")
+            models = [
+                model.strip()
+                for model in _required_option(options, "models").split(",")
+                if model.strip()
+            ]
+            if not models:
+                raise ValueError("--models must contain at least one model")
+            usage = Usage(
+                input_tokens=int(_required_option(options, "input_tokens")),
+                output_tokens=int(options.get("output_tokens", 0)),
+                cached_input_tokens=int(options.get("cached_input_tokens", 0)),
+                cache_write_tokens=int(options.get("cache_write_tokens", 0)),
+                request_count=int(options.get("requests", 1)),
+            )
+            comparisons = compare_models(models, usage)
+            print(
+                json.dumps(
+                    {
+                        "status": "success",
+                        "comparisons": [item.to_dict() for item in comparisons],
+                        "cheapest_model": next(
+                            (
+                                item.model
+                                for item in comparisons
+                                if item.cost is not None
+                            ),
+                            None,
+                        ),
+                    }
+                )
+            )
+
         elif command == "baseline":
             result = _handle_baseline_command(cli, sys.argv[2:])
             print(json.dumps(result))
@@ -566,6 +739,9 @@ COMMANDS:
     catalog [provider]
         List model metadata: context window, modalities, tokenizer, pricing
 
+    catalog import --file FILE [--include-variants true]
+        Import a downloaded OpenRouter /api/v1/models JSON snapshot
+
     model-info <model>
         Show metadata and pricing for one model
 
@@ -575,6 +751,18 @@ COMMANDS:
 
     reconcile --file RESPONSE.json --model MODEL [--provider P] [--expected-cost USD]
         Compare provider-reported usage/cost with a prior estimate
+
+    usage add --file RESPONSE.json --model MODEL [--provider P] [--expected-cost USD]
+        Append a reconciled usage record to a JSONL ledger
+
+    usage report [--ledger PATH] [--since ISO_TIMESTAMP]
+        Summarize recorded usage and spend
+
+    usage list [--ledger PATH] [--since ISO_TIMESTAMP] [--limit N]
+        Show individual ledger records
+
+    compare --models MODEL1,MODEL2 --input-tokens N [--output-tokens N]
+        Compare one usage profile across models, cheapest first
 
     providers
         List all available token counter providers

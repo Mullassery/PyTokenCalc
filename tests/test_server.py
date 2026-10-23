@@ -55,6 +55,49 @@ class TestServerMethods:
         cleared = server.clear_cache()
         assert cleared["status"] == "success"
 
+    def test_list_catalog(self, server):
+        result = server.list_catalog("openai")
+        assert result["status"] == "success"
+        assert result["count"] > 0
+        assert all(model["provider"] == "openai" for model in result["models"])
+
+    def test_estimate_usage(self, server):
+        result = server.estimate_usage(
+            "gpt-4o",
+            {"input_tokens": 1_000, "output_tokens": 500},
+        )
+        assert result["status"] == "success"
+        assert result["cost"]["costs_usd"]["total"] == pytest.approx(0.0075)
+
+    def test_reconcile_response(self, server):
+        result = server.reconcile_response(
+            "gpt-4o",
+            {"usage": {"prompt_tokens": 100, "completion_tokens": 20}},
+            expected_cost_usd=0.001,
+        )
+        assert result["status"] == "success"
+        assert result["usage"]["input_tokens"] == 100
+        assert result["delta_usd"] is not None
+
+    def test_preflight_request(self, server):
+        result = server.preflight_request(
+            [{"role": "user", "content": "Hello world"}],
+            "gpt-4o",
+            max_output_tokens=100,
+        )
+        assert result["status"] == "success"
+        assert result["input_tokens"] > 0
+        assert result["fits"] is True
+
+
+def test_openapi_spec():
+    from pytokencalc.server import openapi_spec
+
+    spec = openapi_spec()
+    assert spec["openapi"].startswith("3.")
+    assert "/v1/models" in spec["paths"]
+    assert "/v1/cost" in spec["paths"]
+
 
 class TestFlaskApp:
     @pytest.fixture
@@ -98,3 +141,36 @@ class TestFlaskApp:
     def test_cache_endpoints(self, client):
         assert client.get("/cache").status_code == 200
         assert client.delete("/cache").status_code == 200
+
+    def test_v1_catalog_endpoint(self, client):
+        resp = client.get("/v1/models?provider=openai")
+        assert resp.status_code == 200
+        assert resp.get_json()["count"] > 0
+
+    def test_v1_cost_endpoint(self, client):
+        resp = client.post(
+            "/v1/cost",
+            json={
+                "model": "gpt-4o",
+                "usage": {"input_tokens": 1000, "output_tokens": 500},
+            },
+        )
+        assert resp.status_code == 200
+        assert resp.get_json()["cost"]["costs_usd"]["total"] == pytest.approx(0.0075)
+
+    def test_v1_preflight_endpoint(self, client):
+        resp = client.post(
+            "/v1/preflight",
+            json={
+                "model": "gpt-4o",
+                "messages": [{"role": "user", "content": "Hello world"}],
+                "max_output_tokens": 100,
+            },
+        )
+        assert resp.status_code == 200
+        assert resp.get_json()["input_tokens"] > 0
+
+    def test_openapi_endpoint(self, client):
+        resp = client.get("/openapi.json")
+        assert resp.status_code == 200
+        assert resp.get_json()["openapi"].startswith("3.")

@@ -7,6 +7,7 @@ from pytokencalc.pricing import (
     CostBreakdown,
     ModelPricing,
     Usage,
+    compare_models,
     estimate_cost,
     estimate_usage,
 )
@@ -101,3 +102,17 @@ def test_pricing_override_accepts_cache_fields(tmp_path):
         pricing.PRICING_TABLE = original_table
         pricing.PRICING_LAST_UPDATED = original_updated
         pricing.PRICING_SOURCE = original_source
+
+
+def test_compare_models_sorts_by_cost_and_keeps_errors_last():
+    comparisons = compare_models(
+        ["gpt-4o", "gpt-4o-mini", "unknown-model"],
+        Usage(input_tokens=1_000, output_tokens=500),
+    )
+    assert [item.model for item in comparisons] == [
+        "gpt-4o-mini",
+        "gpt-4o",
+        "unknown-model",
+    ]
+    assert comparisons[-1].error
+    assert comparisons[0].to_dict()["cost_usd"] is not None

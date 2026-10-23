@@ -42,7 +42,9 @@ class ModelSpec:
     max_output_tokens: Optional[int] = None
     input_modalities: Tuple[str, ...] = ("text",)
     output_modalities: Tuple[str, ...] = ("text",)
+    capabilities: Tuple[str, ...] = ()
     endpoints: Tuple[ProviderEndpoint, ...] = ()
+    expiration_date: Optional[str] = None
     source: str = "builtin"
 
     @property
@@ -66,6 +68,8 @@ class ModelSpec:
             "max_output_tokens": self.max_output_tokens,
             "input_modalities": list(self.input_modalities),
             "output_modalities": list(self.output_modalities),
+            "capabilities": list(self.capabilities),
+            "expiration_date": self.expiration_date,
             "pricing_per_million": (
                 {
                     "input": pricing.input_per_million,

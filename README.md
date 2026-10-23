@@ -33,9 +33,16 @@ from compiled code in PyTokenCalc itself. It installs and imports as `pytokencal
 - **Model catalog** — `get_model_spec()` / `list_models()` expose context windows,
   output limits, tokenizer families, modalities, aliases, and provider-prefixed IDs.
 - **Usage-aware costing** — `estimate_usage()` handles cache reads/writes, request
-  fees, and line-item cost breakdowns; the legacy `estimate_cost()` API still works.
+  fees, and line-item cost breakdowns; `compare_models()` ranks models for one
+  usage profile. The legacy `estimate_cost()` API still works.
 - **Reconciliation** — `reconcile(response)` normalizes OpenAI, Anthropic, and
   OpenRouter usage metadata and compares actual cost with your preflight estimate.
+- **OpenRouter snapshot import** — `import_openrouter_catalog_file()` converts a
+  downloaded `/api/v1/models` JSON snapshot into local catalog/pricing metadata.
+- **Optional usage ledger** — `UsageLedger` appends reconciliation records as JSONL
+  and summarizes spend by model/provider; no service or database required.
+- **REST + OpenAPI** — `/v1/models`, `/v1/cost`, `/v1/reconcile`, `/v1/preflight`,
+  and `/openapi.json`, alongside the existing count/cache endpoints.
 - **Chat preflight** — `preflight(messages, tools=..., max_output_tokens=...)`
   estimates prompt tokens, context fit, and cost before sending a request.
 - **Fast local counting** — sub-millisecond for local (tiktoken/HuggingFace) providers on

@@ -123,9 +123,13 @@ pytokencalc count "Hello world" gpt-4          # full CLI, JSON output
 pytokencalc providers
 pytokencalc models [provider]
 pytokencalc catalog [provider]                  # metadata + pricing
+pytokencalc catalog import --file models.json   # OpenRouter snapshot
 pytokencalc model-info gpt-4o
 pytokencalc preflight --file request.json --model gpt-4o --max-output 500
 pytokencalc reconcile --file response.json --model gpt-4o --expected-cost 0.001
+pytokencalc usage add --file response.json --model gpt-4o --ledger usage.jsonl
+pytokencalc usage report --ledger usage.jsonl
+pytokencalc compare --models gpt-4o,gpt-4o-mini --input-tokens 1000 --output-tokens 500
 pytokencalc cache-stats
 pytokencalc help
 
@@ -174,6 +178,13 @@ rates when configured, otherwise at the normal input rate. `reasoning_tokens`
 is informational and is normally included in `output_tokens`, so it is not
 billed twice. `Usage.request_count` applies any per-request fee.
 
+```python
+from pytokencalc import compare_models
+
+for item in compare_models(["gpt-4o", "gpt-4o-mini"], usage):
+    print(item.model, item.cost.total_usd if item.cost else item.error)
+```
+
 ## Reconciliation
 
 ```python
@@ -217,6 +228,52 @@ and image tokens are estimates; `warnings` says when image counting is not
 available for the selected provider. Context fit uses the catalog's context
 window (`None` when the model is unknown).
 
+## OpenRouter snapshot import
+
+No network request is made by the library. Download the public catalog, then
+import it explicitly:
+
+```bash
+curl -s https://openrouter.ai/api/v1/models -o models.json
+pytokencalc catalog import --file models.json
+```
+
+```python
+from pytokencalc import import_openrouter_catalog_file
+
+result = import_openrouter_catalog_file("models.json")
+print(result.to_dict())
+```
+
+OpenRouter per-token prices are converted to PyTokenCalc's per-million rates;
+`request`, cache-read, and cache-write prices are preserved. Variant IDs
+containing `:` (`:free`, `:nitro`) are skipped by default; pass
+`include_variants=True` to include them. Imported prices are in-memory only --
+persist them with a pricing override if you need reproducibility across runs.
+
+## Usage ledger
+
+```python
+from pytokencalc import UsageLedger, reconcile
+
+ledger = UsageLedger("usage.jsonl")
+result = reconcile("gpt-4o", response, expected_cost_usd=0.001)
+ledger.record_reconciliation(result, tags={"env": "prod"}, generation_id="gen-1")
+
+print(ledger.summary())
+print(ledger.list_records(limit=10))
+```
+
+```bash
+pytokencalc usage add --file response.json --model gpt-4o --ledger usage.jsonl \
+  --tags env=prod --generation-id gen-1
+pytokencalc usage report --ledger usage.jsonl
+pytokencalc usage list --ledger usage.jsonl --limit 10
+```
+
+The ledger is append-only JSONL. It is optional; nothing is written unless you
+construct a `UsageLedger` and call `record_reconciliation()`/`append()`.
+
 ## Pricing overrides
 
 `load_pricing_override(path)` merges `{last_updated, models}` into the built-in
@@ -233,6 +290,14 @@ run_server()  # binds 127.0.0.1:8005 by default
 
 `POST /count`, `POST /count-vision`, `GET /providers`, `GET /models`,
 `GET /cache`, `DELETE /cache`, `GET /health`.
+
+OpenRouter-style additions:
+
+- `GET /v1/models?provider=...` — normalized catalog metadata
+- `POST /v1/cost` — `{model, usage: {input_tokens, output_tokens, ...}}`
+- `POST /v1/reconcile` — `{model, response, provider?, expected_cost_usd?}`
+- `POST /v1/preflight` — `{model, messages, tools?, max_output_tokens?}`
+- `GET /openapi.json` — OpenAPI 3.0 description
 
 The server binds to `127.0.0.1` by default and does not implement
 authentication. Pass `host="0.0.0.0"` explicitly only if you're putting

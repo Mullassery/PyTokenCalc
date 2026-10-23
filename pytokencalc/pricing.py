@@ -334,6 +334,45 @@ def get_model_pricing(model: str) -> Optional[ModelPricing]:
     return PRICING_TABLE[key] if key is not None else None
 
 
+@dataclass(frozen=True)
+class ModelCostComparison:
+    """Cost for one model, or an error when it has no usable pricing."""
+
+    model: str
+    cost: Optional[CostBreakdown] = None
+    error: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "model": self.model,
+            "cost_usd": self.cost.total_usd if self.cost is not None else None,
+            "breakdown": self.cost.to_dict() if self.cost is not None else None,
+            "error": self.error,
+        }
+
+
+def compare_models(
+    models: list[str],
+    usage: Usage,
+) -> list[ModelCostComparison]:
+    """Compare one :class:`Usage` across models, cheapest first."""
+    comparisons: list[ModelCostComparison] = []
+    for model in models:
+        try:
+            comparisons.append(
+                ModelCostComparison(model=model, cost=estimate_usage(model, usage))
+            )
+        except ValueError as exc:
+            comparisons.append(ModelCostComparison(model=model, error=str(exc)))
+    comparisons.sort(
+        key=lambda item: (
+            item.cost is None,
+            item.cost.total_usd if item.cost is not None else 0.0,
+        )
+    )
+    return comparisons
+
+
 def estimate_cost(model: str, input_tokens: int, output_tokens: int = 0) -> float:
     """Estimate the USD cost of a request.
 
