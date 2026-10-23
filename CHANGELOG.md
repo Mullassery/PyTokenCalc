@@ -2,6 +2,12 @@
 
 All notable changes to PyTokenCalc are documented in this file.
 
+## [1.4.2] - 2026-10-24
+
+### Changed
+- Declare Python 3.13 support via the `Programming Language :: Python :: 3.13`
+  classifier and add 3.13 to the CI test matrix.
+
 ## [1.4.0] - 2026-10-19
 
 ### Added
