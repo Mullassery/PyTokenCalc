@@ -56,7 +56,9 @@ starts, and record the decision in the PR or changelog.
 
 ## OSS gap analysis — 2026-10-24
 
-**Scope.** Covers PyTokenCalc v1.5.0 as implemented here: ten counters, a static
+**What matters most here:** pricing breadth/freshness and local counting. A 24-model table and live-API counting for Anthropic/Google/Cohere limit accuracy and offline use; expand the table with dated sources and bundle tokenizers.
+
+Scope: Covers PyTokenCalc v1.5.0 as implemented here: ten counters, a static
 24-model USD table, `Usage`/`CostBreakdown`, preflight/reconcile, the ledger, REST
 v1, and optional MCP tools. Compared with OSS token-counting and cost tools.
 
