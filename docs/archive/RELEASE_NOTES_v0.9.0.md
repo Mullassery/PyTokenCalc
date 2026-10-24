@@ -362,7 +362,7 @@ Licensed under MIT License
 
 Need help?
 - 📖 Read the [README](README.md)
-- 📚 Check [CUSTOM_PROVIDERS.md](CUSTOM_PROVIDERS.md) for provider examples
+- 📚 Check [CUSTOM_PROVIDERS.md](../../CUSTOM_PROVIDERS.md) for provider examples
 - 🐛 File an issue on [GitHub Issues](https://github.com/Mullassery/PyTokenCalc/issues)
 - 💬 Start a discussion on [GitHub Discussions](https://github.com/Mullassery/PyTokenCalc/discussions)
 

@@ -133,7 +133,7 @@ All notable changes to PyTokenCalc are documented in this file.
   counter isn't registered (no `transformers` installed) instead of
   raising `AttributeError` on `None.validate_model`, matching the skip
   convention used by the other optional-dependency tests in the file.
-- **HuggingFace tokenizer download timeout** (ROADMAP_HONEST.md §3/§7):
+- **HuggingFace tokenizer download timeout** (docs/internal/ROADMAP_HONEST.md §3/§7):
   `count_tokens(text, model=<huggingface-or-fallback model>)` no longer
   blocks for the OS TCP connect timeout on an uncached model + unreachable
   Hub. Both `HuggingFaceTokenCounter` and `OpenSourceTokenCounter` now

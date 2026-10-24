@@ -56,7 +56,7 @@ This section is deliberately specific instead of generic reassurance:
   only pass model IDs you trust — this is standard `transformers` behavior,
   not something PyTokenCalc adds a sandbox around.
 - No dependency/vulnerability scanning currently runs in CI (see
-  [ROADMAP_HONEST.md](ROADMAP_HONEST.md)). Dependabot is configured
+  [docs/internal/ROADMAP_HONEST.md](docs/internal/ROADMAP_HONEST.md)). Dependabot is configured
   ([.github/dependabot.yml](.github/dependabot.yml)) for dependency
   version bumps, but there is no `pip-audit`/`safety` job verifying those
   bumps address real CVEs, and no SBOM is generated.

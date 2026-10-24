@@ -167,5 +167,5 @@ pytokencalc/
   `pytokencalc.estimate_from_baseline()` — a historical ratio estimate (not
   a tokenizer count) that returns `None` without saved baselines.
 
-See [ROADMAP_HONEST.md](../ROADMAP_HONEST.md) for the full technical-debt
+See [internal/ROADMAP_HONEST.md](internal/ROADMAP_HONEST.md) for the full technical-debt
 list.

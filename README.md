@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/assets/pytokencalc-banner.svg" alt="PyTokenCalc — know your LLM costs before you hit send" width="100%" />
+</p>
+
 # PyTokenCalc
 
 [![PyPI](https://img.shields.io/pypi/v/pytokencalc)](https://pypi.org/project/pytokencalc/)
@@ -136,7 +140,7 @@ from compiled code in PyTokenCalc itself. It installs and imports as `pytokencal
 **Beta.** Current version **1.5.0** (`Development Status :: 4 - Beta` in
 `pyproject.toml`). The local OpenAI/HuggingFace counting path is well covered by tests;
 provider-specific paths require their optional dependencies. See
-[`ROADMAP_HONEST.md`](ROADMAP_HONEST.md) for the full honest status and technical-debt
+[`docs/internal/ROADMAP_HONEST.md`](docs/internal/ROADMAP_HONEST.md) for the full honest status and technical-debt
 list.
 
 ## MCP server
@@ -394,7 +398,7 @@ pycount "Tell me a story about a robot" --model gpt-4o
 - [CLI Quick Start](QUICK_START_CLI.md) — the `pycount` terminal command
 - [Architecture](docs/ARCHITECTURE.md) — component overview, request flow, and honest architectural gaps
 - [Examples](examples/) — runnable code samples
-- [Honest status & roadmap](ROADMAP_HONEST.md) — what's tested, what isn't, known bugs, and technical debt
+- [Honest status & roadmap](docs/internal/ROADMAP_HONEST.md) — what's tested, what isn't, known bugs, and technical debt
 - [Changelog](CHANGELOG.md) — release history, including 1.5.0
 
 ## Known issues and deferred work
@@ -406,7 +410,7 @@ pycount "Tell me a story about a robot" --model gpt-4o
 **Rejected / deferred:**
 - Bundling the MCP transport (FastMCP) as a mandatory dependency.
 
-Full shipped/blocked/rejected detail: [`QUEUE_STATUS.md`](QUEUE_STATUS.md).
+Full shipped/blocked/rejected detail: [`docs/internal/QUEUE_STATUS.md`](docs/internal/QUEUE_STATUS.md).
 
 ## Contributing
 
@@ -432,3 +436,7 @@ ruff check .
 ## License
 
 This project is licensed under the [Apache License 2.0](LICENSE).
+
+---
+
+If PyTokenCalc saves you from a surprise bill, a star helps other engineers find it.
