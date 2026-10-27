@@ -41,13 +41,13 @@ Thanks for your interest in contributing! This guide will help you get started.
 
 ## Reporting Issues
 
-- Use [GitHub Issues](https://github.com/Mullassery/PyTokenCalc/issues)
+- Use [GitHub Issues](../PyTokenCalc/issues)
 - Include Python version, OS, and error messages
 - Provide minimal reproducible example if possible
 
 ## Questions?
 
-Open a [GitHub Discussion](https://github.com/Mullassery/PyTokenCalc/discussions) for questions and ideas.
+Open a [GitHub Discussion](../PyTokenCalc/discussions) for questions and ideas.
 
 ---
 

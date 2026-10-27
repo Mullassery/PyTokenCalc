@@ -441,4 +441,4 @@ PyTokenCalc follows [Semantic Versioning](https://semver.org/):
 
 ## Release Notes
 
-See https://github.com/Mullassery/PyTokenCalc/releases for detailed release notes and upgrade instructions.
+See ../PyTokenCalc/releases for detailed release notes and upgrade instructions.

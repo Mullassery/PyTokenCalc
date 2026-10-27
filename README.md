@@ -5,7 +5,7 @@
 # PyTokenCalc
 
 [![PyPI](https://img.shields.io/pypi/v/pytokencalc)](https://pypi.org/project/pytokencalc/)
-[![CI](https://github.com/Mullassery/PyTokenCalc/actions/workflows/ci.yml/badge.svg)](https://github.com/Mullassery/PyTokenCalc/actions/workflows/ci.yml)
+[![CI](../PyTokenCalc/actions/workflows/ci.yml/badge.svg)](../PyTokenCalc/actions/workflows/ci.yml)
 [![Python 3.9+](https://img.shields.io/badge/Python-3.9%2B-blue)](https://www.python.org)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
 
@@ -426,12 +426,12 @@ ruff check .
 
 ## Related projects
 
-- [PyStreamXL](https://github.com/Mullassery/PyStreamXL) — stream large Excel workbooks with constant memory
-- [PyStreamPDF](https://github.com/Mullassery/PyStreamPDF) — token-efficient PDF extraction for RAG
-- [PyStreamMCP](https://github.com/Mullassery/PyStreamMCP) — context and token optimization for AI agents
-- [PyStreamAI](https://github.com/Mullassery/PyStreamAI) — ML deployment toolkit (canary/A-B, cost tracking, ONNX)
-- [PyTokenCalc](https://github.com/Mullassery/PyTokenCalc) — LLM token counting and cost estimation
-- [Browse all projects](https://github.com/Mullassery?tab=repositories)
+- [PyStreamXL](../PyStreamXL) — stream large Excel workbooks with constant memory
+- [PyStreamPDF](../PyStreamPDF) — token-efficient PDF extraction for RAG
+- [PyStreamMCP](../PyStreamMCP) — context and token optimization for AI agents
+- [PyStreamAI](../PyStreamAI) — ML deployment toolkit (canary/A-B, cost tracking, ONNX)
+- [PyTokenCalc](../PyTokenCalc) — LLM token counting and cost estimation
+- [Browse all projects](../Mullassery-profile)
 
 ## License
 

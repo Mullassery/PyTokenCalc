@@ -344,10 +344,10 @@ c2a04da  Task 1.1 Complete: Add Missing Providers (PyTokenCalc v0.9)
 
 ## 🔗 Links
 
-- **GitHub Repository**: https://github.com/Mullassery/PyTokenCalc
+- **GitHub Repository**: ../PyTokenCalc
 - **PyPI Project**: https://pypi.org/project/pytokencalc/
-- **Issue Tracker**: https://github.com/Mullassery/PyTokenCalc/issues
-- **Discussions**: https://github.com/Mullassery/PyTokenCalc/discussions
+- **Issue Tracker**: ../PyTokenCalc/issues
+- **Discussions**: ../PyTokenCalc/discussions
 
 ---
 
@@ -363,8 +363,8 @@ Licensed under MIT License
 Need help?
 - 📖 Read the [README](README.md)
 - 📚 Check [CUSTOM_PROVIDERS.md](../../CUSTOM_PROVIDERS.md) for provider examples
-- 🐛 File an issue on [GitHub Issues](https://github.com/Mullassery/PyTokenCalc/issues)
-- 💬 Start a discussion on [GitHub Discussions](https://github.com/Mullassery/PyTokenCalc/discussions)
+- 🐛 File an issue on [GitHub Issues](../PyTokenCalc/issues)
+- 💬 Start a discussion on [GitHub Discussions](../PyTokenCalc/discussions)
 
 ---
 
